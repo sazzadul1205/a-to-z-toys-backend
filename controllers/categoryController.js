@@ -17,7 +17,10 @@ export async function listCategories(req, res) {
 // GET /categories/:id  → one
 export async function getCategory(req, res) {
   try {
-    const category = await store.findOne(COLLECTION, (c) => c._id === req.params.id);
+    const category = await store.findOne(
+      COLLECTION,
+      (c) => String(c._id) === String(req.params.id),
+    );
     if (!category) return res.status(404).json({ error: "Category not found" });
     res.json(category);
   } catch (err) {
@@ -32,9 +35,10 @@ export async function createCategory(req, res) {
     const name = (req.body.name || "").trim();
     const exists = await store.findOne(
       COLLECTION,
-      (c) => c.name.toLowerCase() === name.toLowerCase()
+      (c) => c.name.toLowerCase() === name.toLowerCase(),
     );
-    if (exists) return res.status(409).json({ error: "Category name already exists" });
+    if (exists)
+      return res.status(409).json({ error: "Category name already exists" });
 
     const { valid, doc, errors } = await validateAndBuild(Category, req.body);
     if (!valid) return res.status(400).json({ errors });
@@ -49,16 +53,23 @@ export async function createCategory(req, res) {
 // PUT /categories/:id  → update
 export async function updateCategory(req, res) {
   try {
-    const existing = await store.findOne(COLLECTION, (c) => c._id === req.params.id);
+    const existing = await store.findOne(
+      COLLECTION,
+      (c) => String(c._id) === String(req.params.id),
+    );
     if (!existing) return res.status(404).json({ error: "Category not found" });
 
     // Unique-name check only if the name is being changed
-    if (req.body.name && req.body.name.toLowerCase() !== existing.name.toLowerCase()) {
+    if (
+      req.body.name &&
+      req.body.name.toLowerCase() !== existing.name.toLowerCase()
+    ) {
       const dup = await store.findOne(
         COLLECTION,
-        (c) => c.name.toLowerCase() === req.body.name.toLowerCase()
+        (c) => c.name.toLowerCase() === req.body.name.toLowerCase(),
       );
-      if (dup) return res.status(409).json({ error: "Category name already exists" });
+      if (dup)
+        return res.status(409).json({ error: "Category name already exists" });
     }
 
     // Merge so partial updates work, but keep immutable fields
@@ -82,8 +93,13 @@ export async function updateCategory(req, res) {
 // DELETE /categories/:id
 export async function deleteCategory(req, res) {
   try {
-    const ok = await store.deleteById(COLLECTION, req.params.id);
-    if (!ok) return res.status(404).json({ error: "Category not found" });
+    const existing = await store.findOne(
+      COLLECTION,
+      (c) => String(c._id) === String(req.params.id),
+    );
+    if (!existing) return res.status(404).json({ error: "Category not found" });
+
+    await store.deleteById(COLLECTION, existing._id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -125,17 +125,6 @@ dist
 # Stores Visual Studio Code versions used for testing Visual Studio Code extensions
 .vscode-test
 
-# pnpm
-.pnpm-store
-
-# yarn v3
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
 
 # Vite files
 vite.config.js.timestamp-*
@@ -147,3 +136,7 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Data folder
+data/
+coverage/

@@ -10,7 +10,9 @@ export async function listReviews(req, res) {
   try {
     const { productId } = req.query;
     let reviews = await store.readAll(COLLECTION);
-    if (productId) reviews = reviews.filter((r) => r.productId === productId);
+    if (productId) {
+      reviews = reviews.filter((r) => String(r.productId) === String(productId));
+    }
     res.json(reviews);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -20,7 +22,10 @@ export async function listReviews(req, res) {
 // GET /reviews/:id
 export async function getReview(req, res) {
   try {
-    const review = await store.findOne(COLLECTION, (r) => r._id === req.params.id);
+    const review = await store.findOne(
+      COLLECTION,
+      (r) => String(r._id) === String(req.params.id)
+    );
     if (!review) return res.status(404).json({ error: "Review not found" });
     res.json(review);
   } catch (err) {
@@ -32,8 +37,12 @@ export async function getReview(req, res) {
 export async function createReview(req, res) {
   try {
     // 1. Cross-model check: product must exist
-    const product = await store.findOne(PRODUCTS, (p) => p._id === req.body.productId);
-    if (!product) return res.status(400).json({ error: "productId does not reference an existing product" });
+    const product = await store.findOne(
+      PRODUCTS,
+      (p) => String(p._id) === String(req.body.productId)
+    );
+    if (!product)
+      return res.status(400).json({ error: "productId does not reference an existing product" });
 
     // 2. Validate shape (rating range, required name, etc.)
     const { valid, doc, errors } = await validateAndBuild(Review, req.body);
@@ -49,11 +58,14 @@ export async function createReview(req, res) {
 // PUT /reviews/:id  — cannot change productId
 export async function updateReview(req, res) {
   try {
-    const existing = await store.findOne(COLLECTION, (r) => r._id === req.params.id);
+    const existing = await store.findOne(
+      COLLECTION,
+      (r) => String(r._id) === String(req.params.id)
+    );
     if (!existing) return res.status(404).json({ error: "Review not found" });
 
     // Lock productId — a review belongs to the product it was created for
-    if (req.body.productId && req.body.productId !== existing.productId) {
+    if (req.body.productId && String(req.body.productId) !== String(existing.productId)) {
       return res.status(400).json({ error: "productId cannot be modified" });
     }
 
@@ -78,27 +90,38 @@ export async function updateReview(req, res) {
 // DELETE /reviews/:id
 export async function deleteReview(req, res) {
   try {
-    const ok = await store.deleteById(COLLECTION, req.params.id);
-    if (!ok) return res.status(404).json({ error: "Review not found" });
+    const existing = await store.findOne(
+      COLLECTION,
+      (r) => String(r._id) === String(req.params.id)
+    );
+    if (!existing) return res.status(404).json({ error: "Review not found" });
+
+    await store.deleteById(COLLECTION, existing._id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 }
 
-// GET /reviews/product/:productId/summary  — optional helper endpoint
-// Returns average rating + count for a product
+// GET /reviews/product/:productId/summary  — average rating + count for a product
 export async function getProductReviewSummary(req, res) {
   try {
     const { productId } = req.params;
-    const product = await store.findOne(PRODUCTS, (p) => p._id === productId);
+    const product = await store.findOne(
+      PRODUCTS,
+      (p) => String(p._id) === String(productId)
+    );
     if (!product) return res.status(404).json({ error: "Product not found" });
 
-    const reviews = await store.find(COLLECTION, (r) => r.productId === productId);
+    const reviews = await store.find(
+      COLLECTION,
+      (r) => String(r.productId) === String(productId)
+    );
     const count = reviews.length;
-    const avg = count === 0
-      ? 0
-      : Number((reviews.reduce((s, r) => s + r.rating, 0) / count).toFixed(2));
+    const avg =
+      count === 0
+        ? 0
+        : Number((reviews.reduce((s, r) => s + r.rating, 0) / count).toFixed(2));
 
     res.json({ productId, count, averageRating: avg });
   } catch (err) {
