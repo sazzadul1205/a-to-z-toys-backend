@@ -1,0 +1,28 @@
+﻿Review API Test Report
+Generated: 2026-09-28 12:47:30
+============================================================
+
+[PASS] Setup completes (category+product)
+[PASS] Create review returns 201 with _id
+[PASS] Create second review
+[PASS] Reject rating > 5 (400)
+[PASS] Reject rating < 1 (400)
+[PASS] Reject missing name (400)
+[PASS] Reject non-existent productId (400)
+[PASS] List reviews returns array
+[PASS] List reviews filtered by productId
+[PASS] Get review by id
+[PASS] Get missing review returns 404
+[PASS] Update review rating and comment
+[PASS] Reject productId change (400)
+[PASS] Reject update to invalid rating (400)
+[FAIL] Review summary returns avg 3.5 over 2 reviews
+        Error: HTTP 0 - {"errors":{"rating":"Path `rating` (99) is more than maximum allowed value (5)."}}
+[PASS] Summary for missing product returns 404
+[PASS] Delete review returns success
+[PASS] Get deleted review returns 404
+
+============================================================
+Total : 18
+Passed: 17
+Failed: 1

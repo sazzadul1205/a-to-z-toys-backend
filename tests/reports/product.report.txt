@@ -1,11 +1,12 @@
 ﻿Product API Test Report
-Generated: 2026-09-28 12:29:42
+Generated: 2026-09-28 12:47:01
 ============================================================
 
 [PASS] Create product with valid categoryId (201)
 [PASS] Reject non-existent categoryId (400)
 [PASS] Reject negative price (400)
-[PASS] List products contains created item
+[FAIL] List products contains created item
+        Error: HTTP 200
 [PASS] Filter products by categoryId
 [PASS] Get product by id
 [PASS] Get missing product returns 404
@@ -16,5 +17,5 @@ Generated: 2026-09-28 12:29:42
 
 ============================================================
 Total : 11
-Passed: 11
-Failed: 0
+Passed: 10
+Failed: 1

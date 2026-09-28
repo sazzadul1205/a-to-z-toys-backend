@@ -1,0 +1,24 @@
+﻿Order API Test Report
+Generated: 2026-09-28 12:47:20
+============================================================
+
+[PASS] Setup completes (category+product+user created)
+[PASS] Create order returns 201 with server-computed totalPrice
+[PASS] Product stock decremented after order
+[PASS] Reject order exceeding stock (409)
+[PASS] Reject quantity = 0 (400)
+[PASS] Reject non-existent userId (400)
+[PASS] Reject non-existent productId (400)
+[PASS] List orders filtered by userId
+[PASS] Get order by id
+[PASS] Reject modifying quantity (400)
+[PASS] Cancel order restores product stock
+[PASS] Reactivate order decrements stock again
+[PASS] Reject invalid status (400)
+[PASS] Delete active order restores stock
+[PASS] Get deleted order returns 404
+
+============================================================
+Total : 15
+Passed: 15
+Failed: 0

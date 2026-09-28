@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "name": "ReviewToy_7e05a59c",
+    "description": "",
+    "price": 10,
+    "stock": 5,
+    "categoryId": "6aba0c31107e697db18fb731",
+    "image": "",
+    "_id": "6aba0c32107e697db18fb732",
+    "createdAt": "2026-09-28T06:41:54.140Z"
+  }
+]

@@ -1,9 +1,10 @@
 ﻿Category API Test Report
-Generated: 2026-09-28 12:28:18
+Generated: 2026-09-28 12:46:55
 ============================================================
 
 [PASS] Create category returns 201 with _id
-[PASS] List categories contains created item
+[FAIL] List categories contains created item
+        Error: HTTP 200 - item not found
 [PASS] Get category by id returns correct record
 [PASS] Update category description
 [PASS] Duplicate name rejected (409)
@@ -14,5 +15,5 @@ Generated: 2026-09-28 12:28:18
 
 ============================================================
 Total : 9
-Passed: 9
-Failed: 0
+Passed: 8
+Failed: 1
