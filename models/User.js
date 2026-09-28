@@ -15,4 +15,11 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Strip password before sending anywhere
+userSchema.methods.toSafeJSON = function () {
+  const obj = this.toObject({ versionKey: false });
+  delete obj.password;
+  return obj;
+};
+
 export default mongoose.model("User", userSchema);

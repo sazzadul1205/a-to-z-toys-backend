@@ -1,0 +1,24 @@
+﻿User API Test Report
+Generated: 2026-09-28 12:31:20
+============================================================
+
+[PASS] Create user returns 201 with _id
+[PASS] Create user response excludes password
+[PASS] Stored JSON does not contain plaintext password
+[PASS] Duplicate email rejected (409)
+[PASS] Invalid email rejected (400)
+[PASS] Short password rejected (400)
+[PASS] Invalid role rejected (400)
+[PASS] List users excludes passwords
+[PASS] Get user by id excludes password
+[PASS] Get missing user returns 404
+[PASS] Update user changes name, hides password
+[PASS] Updated password stored hashed (not plaintext)
+[FAIL] Update to duplicate email rejected (409)
+        Error: HTTP 200 - {"name":"Alice Updated","email":"bob_1149871797@example.com","role":"Customer","_id":"6aba09b353893afefa496a7f","createdAt":"2026-09-28T06:31:15.234Z"}
+[PASS] Deleted user returns 404 on GET
+
+============================================================
+Total : 14
+Passed: 13
+Failed: 

@@ -1,0 +1,18 @@
+﻿Category API Test Report
+Generated: 2026-09-28 12:28:18
+============================================================
+
+[PASS] Create category returns 201 with _id
+[PASS] List categories contains created item
+[PASS] Get category by id returns correct record
+[PASS] Update category description
+[PASS] Duplicate name rejected (409)
+[PASS] Empty name rejected (400)
+[PASS] Get missing id returns 404
+[PASS] Delete category returns success
+[PASS] Get deleted id returns 404
+
+============================================================
+Total : 9
+Passed: 9
+Failed: 0
