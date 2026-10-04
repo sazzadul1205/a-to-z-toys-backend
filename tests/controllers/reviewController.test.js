@@ -1,9 +1,9 @@
-import request from "supertest";
-import app from "../../app.js";
 import { cleanData, validCategory, validProduct } from "../helpers/testEnv.js";
+import { api, setupAdmin } from "../helpers/auth.js";
 
 beforeEach(async () => {
   await cleanData();
+  await setupAdmin();
 });
 
 afterAll(async () => {
@@ -11,9 +11,9 @@ afterAll(async () => {
 });
 
 async function makeProduct() {
-  const cat = (await request(app).post("/categories").send(validCategory()))
+  const cat = (await api().post("/categories").send(validCategory()))
     .body;
-  return (await request(app).post("/products").send(validProduct(cat._id)))
+  return (await api().post("/products").send(validProduct(cat._id)))
     .body;
 }
 
@@ -21,7 +21,7 @@ describe("Review API", () => {
   describe("POST /reviews", () => {
     it("creates a review", async () => {
       const p = await makeProduct();
-      const res = await request(app).post("/reviews").send({
+      const res = await api().post("/reviews").send({
         productId: p._id,
         name: "Jane",
         rating: 5,
@@ -32,7 +32,7 @@ describe("Review API", () => {
     });
 
     it("rejects unknown product", async () => {
-      const res = await request(app).post("/reviews").send({
+      const res = await api().post("/reviews").send({
         productId: "000000000000000000000000",
         name: "Jane",
         rating: 5,
@@ -42,7 +42,7 @@ describe("Review API", () => {
 
     it("rejects rating above 5", async () => {
       const p = await makeProduct();
-      const res = await request(app).post("/reviews").send({
+      const res = await api().post("/reviews").send({
         productId: p._id,
         name: "Jane",
         rating: 6,
@@ -52,7 +52,7 @@ describe("Review API", () => {
 
     it("rejects rating below 1", async () => {
       const p = await makeProduct();
-      const res = await request(app).post("/reviews").send({
+      const res = await api().post("/reviews").send({
         productId: p._id,
         name: "Jane",
         rating: 0,
@@ -62,7 +62,7 @@ describe("Review API", () => {
 
     it("rejects a name shorter than 2 characters", async () => {
       const p = await makeProduct();
-      const res = await request(app).post("/reviews").send({
+      const res = await api().post("/reviews").send({
         productId: p._id,
         name: "A",
         rating: 5,
@@ -78,30 +78,30 @@ describe("Review API", () => {
 
       // build a second product in a different category
       const cat2 = (
-        await request(app)
+        await api()
           .post("/categories")
           .send(validCategory({ name: "C2" }))
       ).body;
       expect(cat2._id).toBeDefined();
 
       const p2 = (
-        await request(app)
+        await api()
           .post("/products")
           .send(validProduct(cat2._id, { name: "P2" }))
       ).body;
       expect(p2._id).toBeDefined();
 
-      const r1 = await request(app)
+      const r1 = await api()
         .post("/reviews")
         .send({ productId: p1._id, name: "Alice", rating: 4 });
       expect(r1.status).toBe(201);
 
-      const r2 = await request(app)
+      const r2 = await api()
         .post("/reviews")
         .send({ productId: p2._id, name: "Bob", rating: 3 });
       expect(r2.status).toBe(201);
 
-      const res = await request(app).get(`/reviews?productId=${p1._id}`);
+      const res = await api().get(`/reviews?productId=${p1._id}`);
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].name).toBe("Alice");
@@ -112,14 +112,14 @@ describe("Review API", () => {
     it("updates the rating", async () => {
       const p = await makeProduct();
       const r = (
-        await request(app).post("/reviews").send({
+        await api().post("/reviews").send({
           productId: p._id,
           name: "Jane",
           rating: 4,
         })
       ).body;
 
-      const res = await request(app)
+      const res = await api()
         .put(`/reviews/${r._id}`)
         .send({ rating: 2 });
       expect(res.body.rating).toBe(2);
@@ -128,14 +128,14 @@ describe("Review API", () => {
     it("rejects changing productId", async () => {
       const p = await makeProduct();
       const r = (
-        await request(app).post("/reviews").send({
+        await api().post("/reviews").send({
           productId: p._id,
           name: "Jane",
           rating: 4,
         })
       ).body;
 
-      const res = await request(app)
+      const res = await api()
         .put(`/reviews/${r._id}`)
         .send({ productId: "000000000000000000000000" });
       expect(res.status).toBe(400);
@@ -145,7 +145,7 @@ describe("Review API", () => {
   describe("GET /reviews/product/:productId/summary", () => {
     it("returns 0 average when no reviews", async () => {
       const p = await makeProduct();
-      const res = await request(app).get(`/reviews/product/${p._id}/summary`);
+      const res = await api().get(`/reviews/product/${p._id}/summary`);
       expect(res.body).toEqual({
         productId: p._id,
         count: 0,
@@ -156,25 +156,25 @@ describe("Review API", () => {
     it("computes the average of multiple reviews", async () => {
       const p = await makeProduct();
 
-      const a = await request(app)
+      const a = await api()
         .post("/reviews")
         .send({ productId: p._id, name: "Alice", rating: 5 });
-      const b = await request(app)
+      const b = await api()
         .post("/reviews")
         .send({ productId: p._id, name: "Bob", rating: 3 });
-      const c = await request(app)
+      const c = await api()
         .post("/reviews")
         .send({ productId: p._id, name: "Carol", rating: 4 });
       expect([a.status, b.status, c.status]).toEqual([201, 201, 201]);
 
-      const res = await request(app).get(`/reviews/product/${p._id}/summary`);
+      const res = await api().get(`/reviews/product/${p._id}/summary`);
       expect(res.status).toBe(200);
       expect(res.body.count).toBe(3);
       expect(res.body.averageRating).toBe(4);
     });
 
     it("returns 404 for unknown product", async () => {
-      const res = await request(app).get("/reviews/product/nope/summary");
+      const res = await api().get("/reviews/product/nope/summary");
       expect(res.status).toBe(404);
     });
   });
@@ -183,13 +183,13 @@ describe("Review API", () => {
     it("deletes a review", async () => {
       const p = await makeProduct();
       const r = (
-        await request(app).post("/reviews").send({
+        await api().post("/reviews").send({
           productId: p._id,
           name: "Jane",
           rating: 4,
         })
       ).body;
-      const res = await request(app).delete(`/reviews/${r._id}`);
+      const res = await api().delete(`/reviews/${r._id}`);
       expect(res.status).toBe(200);
     });
   });
