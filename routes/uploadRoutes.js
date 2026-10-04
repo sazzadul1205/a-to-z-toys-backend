@@ -1,30 +1,44 @@
+import path from "path";
+import fs from "fs/promises";
 import { Router } from "express";
-import { upload, processImageToWebP, deleteImage, getImageUrl } from "../config/imageUpload.js";
+import {
+  upload,
+  processImageToWebP,
+  deleteImage,
+  getImageUrl,
+} from "../config/imageUpload.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 
+const adminOnly = [requireAuth, requireAdmin];
+
+async function toWebP(file, quality = 80) {
+  const outputFilename = `${path.parse(file.filename).name}.webp`;
+  const processedPath = await processImageToWebP(file.path, outputFilename, {
+    quality,
+    width: 1200,
+    height: 1200,
+  });
+  const { size } = await fs.stat(processedPath);
+  return { filename: outputFilename, size };
+}
+
 // POST /upload/image - Upload and convert to WebP
-router.post("/image", upload.single("image"), async (req, res) => {
+router.post("/image", ...adminOnly, upload.single("image"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No image file provided" });
     }
 
-    const outputFilename = `${path.parse(req.file.filename).name}.webp`;
-    const processedPath = await processImageToWebP(req.file.path, outputFilename, {
-      quality: 80,
-      width: 1200,
-      height: 1200,
-    });
-
-    const imageUrl = getImageUrl(outputFilename);
+    const { filename, size } = await toWebP(req.file);
 
     res.status(201).json({
       success: true,
-      filename: outputFilename,
-      url: imageUrl,
+      filename,
+      url: getImageUrl(filename),
       originalName: req.file.originalname,
-      size: (await import("fs/promises")).then(fs => fs.stat(processedPath)).then(stat => stat.size),
+      size,
     });
   } catch (err) {
     console.error("Upload error:", err);
@@ -33,27 +47,32 @@ router.post("/image", upload.single("image"), async (req, res) => {
 });
 
 // POST /upload/images - Multiple images
-router.post("/images", upload.array("images", 5), async (req, res) => {
+router.post("/images", ...adminOnly, upload.array("images", 5), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: "No image files provided" });
     }
 
-    const results = await Promise.all(
-      req.files.map(async (file) => {
-        const outputFilename = `${path.parse(file.filename).name}.webp`;
-        await processImageToWebP(file.path, outputFilename, {
-          quality: 80,
-          width: 1200,
-          height: 1200,
-        });
-        return {
-          filename: outputFilename,
-          url: getImageUrl(outputFilename),
+    // Sequential on purpose: running every sharp pipeline at once multiplied
+    // memory use by the file count.
+    const results = [];
+    const written = [];
+    try {
+      for (const file of req.files) {
+        const { filename, size } = await toWebP(file);
+        written.push(filename);
+        results.push({
+          filename,
+          url: getImageUrl(filename),
           originalName: file.originalname,
-        };
-      })
-    );
+          size,
+        });
+      }
+    } catch (err) {
+      // Do not leave half-converted files behind.
+      await Promise.all(written.map((name) => deleteImage(name).catch(() => {})));
+      throw err;
+    }
 
     res.status(201).json({ success: true, images: results });
   } catch (err) {
@@ -63,11 +82,11 @@ router.post("/images", upload.array("images", 5), async (req, res) => {
 });
 
 // DELETE /upload/image/:filename - Delete processed image
-router.delete("/image/:filename", async (req, res) => {
+router.delete("/image/:filename", ...adminOnly, async (req, res) => {
   try {
     const { filename } = req.params;
     const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9.-]/g, "");
-    
+
     if (!safeFilename.endsWith(".webp")) {
       return res.status(400).json({ error: "Invalid filename" });
     }
@@ -83,7 +102,5 @@ router.delete("/image/:filename", async (req, res) => {
     res.status(500).json({ error: "Failed to delete image" });
   }
 });
-
-import path from "path";
 
 export default router;

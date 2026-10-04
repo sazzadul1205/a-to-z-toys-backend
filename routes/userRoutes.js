@@ -6,13 +6,17 @@ import {
   updateUser,
   deleteUser,
 } from "../controllers/userController.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 
-router.get("/", listUsers);
-router.get("/:id", getUser);
-router.post("/", createUser);
-router.put("/:id", updateUser);
-router.delete("/:id", deleteUser);
+const adminOnly = [requireAuth, requireAdmin];
+
+// Accounts are admin-only: the storefront is a showcase and has no sign-up.
+router.get("/", ...adminOnly, listUsers);
+router.get("/:id", ...adminOnly, getUser);
+router.post("/", ...adminOnly, createUser);
+router.put("/:id", ...adminOnly, updateUser);
+router.delete("/:id", ...adminOnly, deleteUser);
 
 export default router;

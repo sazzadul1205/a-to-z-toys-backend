@@ -6,13 +6,16 @@ import {
   updateCategory,
   deleteCategory,
 } from "../controllers/categoryController.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 
+const adminOnly = [requireAuth, requireAdmin];
+
 router.get("/", listCategories);
 router.get("/:id", getCategory);
-router.post("/", createCategory);
-router.put("/:id", updateCategory);
-router.delete("/:id", deleteCategory);
+router.post("/", ...adminOnly, createCategory);
+router.put("/:id", ...adminOnly, updateCategory);
+router.delete("/:id", ...adminOnly, deleteCategory);
 
 export default router;
