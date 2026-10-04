@@ -140,3 +140,6 @@ vite.config.ts.timestamp-*
 # Data folder
 data/
 coverage/
+# Uploads
+test-image.png
+uploads/

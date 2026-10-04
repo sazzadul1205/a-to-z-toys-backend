@@ -5,7 +5,9 @@ describe("App smoke tests", () => {
   it("responds to GET / with a status message", async () => {
     const res = await request(app).get("/");
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ message: "a-to-z-toys API is running" });
+    expect(res.body.message).toBe("a-to-z-toys API is running");
+    expect(res.body.timestamp).toBeDefined();
+    expect(res.body.env).toBeDefined();
   });
 
   it("returns 404 for unknown routes", async () => {

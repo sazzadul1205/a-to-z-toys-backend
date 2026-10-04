@@ -1,26 +1,17 @@
-import Category from "../models/Category.js";
-import { validateAndBuild } from "../config/validate.js";
-import * as store from "../config/jsonStore.js";
+import { categoryRepository } from "../models/index.js";
 
-const COLLECTION = "categories";
-
-// GET /categories  → list all
 export async function listCategories(req, res) {
   try {
-    const categories = await store.readAll(COLLECTION);
+    const categories = await categoryRepository.findAll();
     res.json(categories);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 }
 
-// GET /categories/:id  → one
 export async function getCategory(req, res) {
   try {
-    const category = await store.findOne(
-      COLLECTION,
-      (c) => String(c._id) === String(req.params.id),
-    );
+    const category = await categoryRepository.findById(req.params.id);
     if (!category) return res.status(404).json({ error: "Category not found" });
     res.json(category);
   } catch (err) {
@@ -28,80 +19,36 @@ export async function getCategory(req, res) {
   }
 }
 
-// POST /categories  → create
 export async function createCategory(req, res) {
   try {
-    // Enforce unique name (case-insensitive)
-    const name = (req.body.name || "").trim();
-    const exists = await store.findOne(
-      COLLECTION,
-      (c) => c.name.toLowerCase() === name.toLowerCase(),
-    );
-    if (exists)
-      return res.status(409).json({ error: "Category name already exists" });
-
-    const { valid, doc, errors } = await validateAndBuild(Category, req.body);
-    if (!valid) return res.status(400).json({ errors });
-
-    await store.insert(COLLECTION, doc);
-    res.status(201).json(doc);
+    const category = await categoryRepository.createCategory(req.body);
+    res.status(201).json(category);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const status = err.status || 500;
+    res.status(status).json(
+      err.errors ? { errors: err.errors } : { error: err.message },
+    );
   }
 }
 
-// PUT /categories/:id  → update
 export async function updateCategory(req, res) {
   try {
-    const existing = await store.findOne(
-      COLLECTION,
-      (c) => String(c._id) === String(req.params.id),
-    );
-    if (!existing) return res.status(404).json({ error: "Category not found" });
-
-    // Unique-name check only if the name is being changed
-    if (
-      req.body.name &&
-      req.body.name.toLowerCase() !== existing.name.toLowerCase()
-    ) {
-      const dup = await store.findOne(
-        COLLECTION,
-        (c) => c.name.toLowerCase() === req.body.name.toLowerCase(),
-      );
-      if (dup)
-        return res.status(409).json({ error: "Category name already exists" });
-    }
-
-    // Merge so partial updates work, but keep immutable fields
-    const merged = {
-      ...existing,
-      ...req.body,
-      _id: existing._id,
-      createdAt: existing.createdAt,
-    };
-
-    const { valid, doc, errors } = await validateAndBuild(Category, merged);
-    if (!valid) return res.status(400).json({ errors });
-
-    const updated = await store.updateById(COLLECTION, existing._id, doc);
+    const updated = await categoryRepository.updateCategory(req.params.id, req.body);
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const status = err.status || 500;
+    res.status(status).json(
+      err.errors ? { errors: err.errors } : { error: err.message },
+    );
   }
 }
 
-// DELETE /categories/:id
 export async function deleteCategory(req, res) {
   try {
-    const existing = await store.findOne(
-      COLLECTION,
-      (c) => String(c._id) === String(req.params.id),
-    );
-    if (!existing) return res.status(404).json({ error: "Category not found" });
-
-    await store.deleteById(COLLECTION, existing._id);
+    await categoryRepository.deleteCategory(req.params.id);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const status = err.status || 500;
+    res.status(status).json({ error: err.message });
   }
 }
