@@ -33,7 +33,12 @@ async function createUser(data) {
   }
 
   const hash = await bcrypt.hash(data.password, SALT_ROUNDS);
-  const finalData = { ...data, email, password: hash };
+  const finalData = {
+    ...data,
+    email,
+    password: hash,
+    passwordChangedAt: data.passwordChangedAt ?? new Date(),
+  };
 
   const { valid: v2, doc, errors: e2 } = await validateAndBuild(User, finalData);
   if (!v2) {
@@ -45,6 +50,38 @@ async function createUser(data) {
 
   const created = await base.create(doc);
   return stripPassword(created);
+}
+
+async function countAdmins(excludeId) {
+  const users = await base.findAll();
+  return users.filter(
+    (u) => u.role === "Admin" && String(u._id) !== String(excludeId),
+  ).length;
+}
+
+// Guard against locking everyone out of the staff area.
+async function assertAnotherAdminRemains(id) {
+  if ((await countAdmins(id)) === 0) {
+    const error = new Error("Cannot remove the last remaining Admin account");
+    error.status = 409;
+    throw error;
+  }
+}
+
+async function deleteUser(id) {
+  const existing = await base.findById(id);
+  if (!existing) {
+    const error = new Error("User not found");
+    error.status = 404;
+    throw error;
+  }
+
+  if (existing.role === "Admin") {
+    await assertAnotherAdminRemains(existing._id);
+  }
+
+  await base.deleteById(existing._id);
+  return stripPassword(existing);
 }
 
 async function updateUser(id, data) {
@@ -69,9 +106,15 @@ async function updateUser(id, data) {
     }
   }
 
+  if (data.role && data.role !== existing.role && data.role !== "Admin") {
+    await assertAnotherAdminRemains(existing._id);
+  }
+
   let newPassword = existing.password;
+  let passwordChangedAt = existing.passwordChangedAt;
   if (data.password) {
     newPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+    passwordChangedAt = new Date();
   }
 
   const merged = {
@@ -80,6 +123,7 @@ async function updateUser(id, data) {
     _id: existing._id,
     createdAt: existing.createdAt,
     password: newPassword,
+    passwordChangedAt,
   };
 
   const { valid, doc, errors } = await validateAndBuild(User, merged);
@@ -112,6 +156,7 @@ export const userRepository = {
   ...base,
   createUser,
   updateUser,
+  deleteUser,
   findAllSafe,
   findByIdSafe,
   verifyPassword,

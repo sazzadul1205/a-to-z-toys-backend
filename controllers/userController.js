@@ -45,12 +45,9 @@ export async function updateUser(req, res) {
 
 export async function deleteUser(req, res) {
   try {
-    const existing = await userRepository.findById(req.params.id);
-    if (!existing) return res.status(404).json({ error: "User not found" });
-
-    await userRepository.deleteById(req.params.id);
+    await userRepository.deleteUser(req.params.id);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message });
   }
 }

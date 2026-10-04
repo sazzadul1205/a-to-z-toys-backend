@@ -12,6 +12,9 @@ const userSchema = new mongoose.Schema({
   },
   password: { type: String, required: true, minlength: 6, select: false },
   role: { type: String, required: true, enum: ["Customer", "Admin"], default: "Customer" },
+  // Embedded in issued tokens so changing a password invalidates the ones
+  // already handed out.
+  passwordChangedAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
 });
 
