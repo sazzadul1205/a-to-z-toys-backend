@@ -4,6 +4,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
+import authRoutes from "./routes/authRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -16,6 +17,14 @@ const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.join(__dirname, "uploads", "processed");
 
 const app = express();
+
+// Behind a reverse proxy? Set TRUST_PROXY to the number of proxy hops so that
+// req.ip (and therefore rate limiting) reflects the real client. Do not use
+// "true" blindly: it lets clients spoof X-Forwarded-For.
+if (process.env.TRUST_PROXY) {
+  const hops = Number(process.env.TRUST_PROXY);
+  app.set("trust proxy", Number.isFinite(hops) && hops > 0 ? hops : false);
+}
 
 // Security middleware
 app.use(helmet({
@@ -30,13 +39,21 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-// CORS configuration
+// Auth is header-based, so credentials are not needed and omitting them avoids
+// the browser rejecting a wildcard origin.
 app.use(cors({
   origin: process.env.CORS_ORIGIN || "*",
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
   maxAge: 86400,
+}));
+
+// Serve uploaded images before the limiter: these are cheap, cacheable, and
+// public, so they should not consume a visitor's API request budget.
+app.use("/uploads", express.static(UPLOADS_DIR, {
+  maxAge: "30d",
+  etag: true,
+  lastModified: true,
 }));
 
 // Rate limiting
@@ -52,13 +69,6 @@ app.use(limiter);
 // Body parsing
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// Serve uploaded images
-app.use("/uploads", express.static(UPLOADS_DIR, {
-  maxAge: "30d",
-  etag: true,
-  lastModified: true,
-}));
 
 // Request logging (development)
 if (process.env.NODE_ENV !== "production") {
@@ -78,6 +88,7 @@ app.get("/", (req, res) => {
 });
 
 // Routes
+app.use("/auth", authRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/products", productRoutes);
 app.use("/users", userRoutes);

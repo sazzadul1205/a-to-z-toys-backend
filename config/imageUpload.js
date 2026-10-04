@@ -47,9 +47,12 @@ export const upload = multer({
   fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB
-    files: 1,
   },
 });
+
+// Caps decoded pixels so a small, highly compressed file cannot force a huge
+// allocation. 25 MP is far above any real product photo.
+const MAX_INPUT_PIXELS = 25_000_000;
 
 export async function processImageToWebP(inputPath, outputFilename, options = {}) {
   const {
@@ -63,16 +66,19 @@ export async function processImageToWebP(inputPath, outputFilename, options = {}
 
   const outputPath = path.join(PROCESSED_DIR, outputFilename);
 
-  await sharp(inputPath)
-    .resize(width, height, { fit, withoutEnlargement: true })
-    .webp({ quality, effort: 6 })
-    .toFile(outputPath);
-
-  // Clean up temp file
   try {
-    await fs.unlink(inputPath);
-  } catch (e) {
-    // Ignore cleanup errors
+    await sharp(inputPath, { limitInputPixels: MAX_INPUT_PIXELS })
+      .resize(width, height, { fit, withoutEnlargement: true })
+      .webp({ quality, effort: 6 })
+      .toFile(outputPath);
+  } finally {
+    // Always clear the upload, even when sharp rejects the file, so a bad
+    // upload cannot fill uploads/temp.
+    try {
+      await fs.unlink(inputPath);
+    } catch {
+      // Already gone or never created.
+    }
   }
 
   return outputPath;
