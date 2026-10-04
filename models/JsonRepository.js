@@ -5,7 +5,13 @@ import { createBaseRepository } from "./BaseRepository.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, "..", "data");
+
+// Overridable so the test suite can work on a throwaway directory. Without this
+// the tests share ./data with the running app, and `npm test` wipes the seeded
+// catalogue and the admin account out from under the developer.
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, "..", "data");
 
 async function ensureDir() {
   try {

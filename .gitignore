@@ -140,6 +140,8 @@ vite.config.ts.timestamp-*
 # Data folder
 data/
 coverage/
+# Throwaway data directory used by the Jest suite
+.test-data/
 # Uploads
 test-image.png
 uploads/

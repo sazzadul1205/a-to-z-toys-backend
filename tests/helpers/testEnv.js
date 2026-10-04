@@ -5,9 +5,13 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const TEST_DATA_DIR = path.join(__dirname, "..", "..", "data");
+// Same directory the data layer uses under test (see tests/setupEnv.js), which
+// is deliberately not the app's real ./data.
+export const TEST_DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, "..", "..", "data");
 
-// Clean data directory between tests
+// Wipe the throwaway test data between tests.
 export async function cleanData() {
   try {
     const files = await fs.readdir(TEST_DATA_DIR);
@@ -19,11 +23,6 @@ export async function cleanData() {
   } catch (err) {
     if (err.code !== "ENOENT") throw err;
   }
-}
-
-// Seed helpers
-export async function seedCategory(name = "Test Category") {
-  const res = await fetch("http://localhost:0"); // placeholder — real seeding via store
 }
 
 export function validUser(overrides = {}) {
