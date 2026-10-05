@@ -80,7 +80,10 @@ Plain environment variables — there is no `dotenv`, so set them in the shell.
 | `JWT_SECRET` | generated | Signing key. If unset, a random secret is written to `data/.jwt-secret` (git-ignored) so tokens survive restarts. **Set it explicitly in production** — rotating it signs everyone out. |
 | `JWT_EXPIRES_IN` | `1d` | Admin session length |
 | `TRUST_PROXY` | unset | Number of proxy hops to trust for `req.ip`. Set this only when actually behind a proxy; `true` would let clients spoof `X-Forwarded-For` and defeat rate limiting. |
-| `REVIEW_SUBMIT_LIMIT` | `10` | `POST /reviews` submissions per hour per IP |
+| `REVIEW_SUBMIT_LIMIT` | `10` | `POST /reviews` submissions per window per IP |
+| `REVIEW_SUBMIT_WINDOW_MS` | `3600000` | Length of the review submission window |
+| `RATE_LIMIT_MAX` | `100` | Requests per window per IP across the general API |
+| `RATE_LIMIT_WINDOW_MS` | `900000` | Length of the general API window |
 | `DATA_DIR` | `./data` | Store location. The Jest suite points this at `.test-data/`. |
 | `ORDER_PROCESSING` | enabled | `false` returns `403` on all order writes |
 | `INVENTORY_MANAGEMENT` | enabled | `false` stops tracking stock |
@@ -145,6 +148,24 @@ npm run test:coverage
 `.test-data/` before the data layer loads, and each test clears that directory.
 This matters: the tests and the running app previously shared `data/`, so a
 `npm test` wiped the seeded catalogue and the admin account.
+
+### Browser end-to-end tests
+
+The storefront runs a Playwright suite in `a_to_z_kids_world/e2e` against a live
+API and dev server. It uses the seeded catalogue, so run `npm run seed` first.
+
+A browser run legitimately makes far more requests than the default budget
+allows, and the symptom is a `429` surfacing as an empty product grid rather than
+an obvious throttle error. Start the API with raised limits for the run:
+
+```bash
+RATE_LIMIT_MAX=100000 RATE_LIMIT_WINDOW_MS=60000 \
+REVIEW_SUBMIT_LIMIT=10000 REVIEW_SUBMIT_WINDOW_MS=60000 \
+npm start
+```
+
+The suite's global setup checks this before the first test and fails with these
+instructions if the API is throttling.
 
 Route tests authenticate through `tests/helpers/auth.js`, which creates a
 throwaway admin per test.
