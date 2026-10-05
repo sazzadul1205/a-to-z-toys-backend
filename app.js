@@ -1,9 +1,9 @@
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
+import { apiLimiter } from "./config/rateLimits.js";
 import authRoutes from "./routes/authRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
@@ -57,14 +57,7 @@ app.use("/uploads", express.static(UPLOADS_DIR, {
 }));
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: { error: "Too many requests, please try again later" },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use(limiter);
+app.use(apiLimiter);
 
 // Body parsing
 app.use(express.json({ limit: "10mb" }));
