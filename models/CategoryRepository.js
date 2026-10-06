@@ -1,8 +1,8 @@
-import { createJsonRepository } from "./JsonRepository.js";
+import { createRepository } from "./repositoryFactory.js";
 import { validateAndBuild } from "../config/validate.js";
 import Category from "./Category.js";
 
-const base = createJsonRepository("categories");
+const base = createRepository("categories", Category);
 
 async function createCategory(data) {
   const name = (data.name || "").trim();

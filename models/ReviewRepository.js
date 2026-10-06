@@ -1,9 +1,9 @@
-import { createJsonRepository } from "./JsonRepository.js";
+import { createRepository } from "./repositoryFactory.js";
 import { validateAndBuild } from "../config/validate.js";
 import Review from "./Review.js";
 import { productRepository } from "./ProductRepository.js";
 
-const base = createJsonRepository("reviews");
+const base = createRepository("reviews", Review);
 
 async function createReview(data) {
   const product = await productRepository.findById(data.productId);

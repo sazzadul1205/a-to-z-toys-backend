@@ -1,11 +1,11 @@
-import { createJsonRepository } from "./JsonRepository.js";
+import { createRepository } from "./repositoryFactory.js";
 import { validateAndBuild } from "../config/validate.js";
 import Order from "./Order.js";
 import { productRepository } from "./ProductRepository.js";
 import { userRepository } from "./UserRepository.js";
 import { isOrderProcessingEnabled, isInventoryEnabled } from "../config/features.js";
 
-const base = createJsonRepository("orders");
+const base = createRepository("orders", Order);
 
 const IMMUTABLE_ON_UPDATE = [
   "userId",

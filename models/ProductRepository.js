@@ -1,10 +1,10 @@
-import { createJsonRepository } from "./JsonRepository.js";
+import { createRepository } from "./repositoryFactory.js";
 import { validateAndBuild } from "../config/validate.js";
 import Product from "./Product.js";
 import { categoryRepository } from "./CategoryRepository.js";
 import { isInventoryEnabled } from "../config/features.js";
 
-const base = createJsonRepository("products");
+const base = createRepository("products", Product);
 
 async function createProduct(data) {
   const category = await categoryRepository.findById(data.categoryId);

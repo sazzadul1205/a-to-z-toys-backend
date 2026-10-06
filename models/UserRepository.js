@@ -1,9 +1,9 @@
 import bcrypt from "bcryptjs";
-import { createJsonRepository } from "./JsonRepository.js";
+import { createRepository } from "./repositoryFactory.js";
 import { validateAndBuild } from "../config/validate.js";
 import User from "./User.js";
 
-const base = createJsonRepository("users");
+const base = createRepository("users", User);
 const SALT_ROUNDS = 10;
 
 function stripPassword(user) {

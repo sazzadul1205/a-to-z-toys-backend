@@ -5,3 +5,9 @@ export { orderRepository } from "./OrderRepository.js";
 export { reviewRepository } from "./ReviewRepository.js";
 export { createBaseRepository } from "./BaseRepository.js";
 export { createJsonRepository } from "./JsonRepository.js";
+export {
+  createRepository,
+  ensureSchema,
+  dataSource,
+  REGISTRY,
+} from "./repositoryFactory.js";
