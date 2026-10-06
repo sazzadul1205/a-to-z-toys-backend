@@ -30,8 +30,9 @@ There is no `lint` or `build` script — the static gate is the test suite
 ## Environment
 Plain env vars (no dotenv). See `README.md` for the full table. Key entries:
 `PORT` (3000), `CORS_ORIGIN` (*), `JWT_SECRET`, `JWT_EXPIRES_IN` (1d),
-`MONGODB_URI`? — note there is no Mongo; data lives in `DATA_DIR` (default
-`./data`; tests use `.test-data/`). Feature flags: `ORDER_PROCESSING`,
+`DATA_SOURCE` (`json`|`sqlite`|`mysql`, default `json`) selects the engine;
+`DB_SQLITE_PATH`; `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` (MySQL only);
+`DB_SYNC`. Data lives in `DATA_DIR` (default `./data`; tests use `.test-data/`). Feature flags: `ORDER_PROCESSING`,
 `INVENTORY_MANAGEMENT`. Rate-limit knobs: `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`,
 `REVIEW_SUBMIT_LIMIT`, `REVIEW_SUBMIT_WINDOW_MS`.
 

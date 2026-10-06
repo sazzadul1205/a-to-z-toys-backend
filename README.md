@@ -87,6 +87,43 @@ Plain environment variables — there is no `dotenv`, so set them in the shell.
 | `DATA_DIR` | `./data` | Store location. The Jest suite points this at `.test-data/`. |
 | `ORDER_PROCESSING` | enabled | `false` returns `403` on all order writes |
 | `INVENTORY_MANAGEMENT` | enabled | `false` stops tracking stock |
+| `DATA_SOURCE` | `json` | Storage engine: `json` (files in `DATA_DIR`), `sqlite`, or `mysql`. |
+| `DB_SQLITE_PATH` | `DATA_DIR/sqlite.db` | SQLite database file (only for `DATA_SOURCE=sqlite`). |
+| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | defaults | MySQL/MariaDB connection (only for `DATA_SOURCE=mysql`). |
+| `DB_SYNC` | `true` | `false` skips auto-creating tables on boot. |
+
+## Storage backends
+
+The data layer is engine-agnostic. `DATA_SOURCE` selects the engine; the Mongoose
+schemas in `models/` are the single source of truth for **validation** and for the
+**column structure** each engine creates, so switching engines needs no model
+rewrites — controllers and routes are untouched.
+
+| Engine | Driver | `DATA_SOURCE` | Notes |
+|---|---|---|---|
+| JSON files | built-in | `json` (default) | One `<collection>.json` per table in `DATA_DIR`. `DATA_DIR`/`.test-data/` isolation is unchanged. |
+| SQLite | `better-sqlite3` | `sqlite` | `DB_SQLITE_PATH` (default `DATA_DIR/sqlite.db`) holds the database. Good for local dev. |
+| MySQL / MariaDB | `mysql2` | `mysql` | Honour `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`. |
+
+`createRepository(collection, model)` (in `models/repositoryFactory.js`) builds the
+engine-specific instance for a collection; each domain repository calls it with its
+Mongoose model at module load, e.g. `createRepository("products", Product)`. A server
+boot calls `ensureSchema()` (a no-op for JSON) to `CREATE TABLE IF NOT EXISTS` on
+every collection; set `DB_SYNC=false` to manage schema yourself.
+
+Every engine implements the `BaseRepository` contract in `models/BaseRepository.js`:
+`findAll`, `findById`, `findOne`, `find`, `create`, `updateById`, `deleteById`,
+`exists`. Predicate reads (`find`, `findOne`, `exists`) run in-process and behave
+identically on every engine; `_id` is a `TEXT` primary key, matching the file store.
+Mongoose is never connected — schemas validate only.
+
+```bash
+# Local SQLite
+DATA_SOURCE=sqlite npm start
+
+# MySQL / MariaDB
+DATA_SOURCE=mysql DB_HOST=127.0.0.1 DB_PORT=3306 DB_USER=toys DB_PASSWORD=secret DB_NAME=toys npm start
+```
 
 ## Seeding
 
