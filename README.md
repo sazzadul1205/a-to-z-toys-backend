@@ -71,7 +71,10 @@ spam cannot consume a visitor's general request allowance.
 
 ## Environment
 
-Plain environment variables — there is no `dotenv`, so set them in the shell.
+Plain environment variables. A committed `.env.example` lists every variable;
+copy it to a local (git-ignored) `.env` and `dotenv` loads it at startup, with
+**shell values always taking precedence** over anything in `.env`. Set
+`DATA_SOURCE` to switch engines (see [Storage backends](#storage-backends)).
 
 | Variable | Default | Purpose |
 |---|---|---|

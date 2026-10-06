@@ -11,6 +11,7 @@ import userRoutes from "./routes/userRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import { DATA_SOURCE } from "./config/dataSource.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,6 +78,7 @@ app.get("/", (req, res) => {
     message: "a-to-z-toys API is running",
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || "development",
+    engine: DATA_SOURCE,
   });
 });
 

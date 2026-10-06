@@ -28,7 +28,8 @@ There is no `lint` or `build` script — the static gate is the test suite
   still throttling.
 
 ## Environment
-Plain env vars (no dotenv). See `README.md` for the full table. Key entries:
+Plain env vars (loaded from a git-ignored `.env` via `dotenv`, with shell values
+taking precedence). See `README.md` for the full table. Key entries:
 `PORT` (3000), `CORS_ORIGIN` (*), `JWT_SECRET`, `JWT_EXPIRES_IN` (1d),
 `DATA_SOURCE` (`json`|`sqlite`|`mysql`, default `json`) selects the engine;
 `DB_SQLITE_PATH`; `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` (MySQL only);
