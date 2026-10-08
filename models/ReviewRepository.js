@@ -12,6 +12,13 @@ async function createReview(data) {
     error.status = 400;
     throw error;
   }
+  // Reviews can be disabled per product from the staff area. When disabled,
+  // shoppers cannot submit new reviews and the storefront hides existing ones.
+  if (product.reviewsEnabled === false) {
+    const error = new Error("Reviews are disabled for this product");
+    error.status = 403;
+    throw error;
+  }
 
   const { valid, doc, errors } = await validateAndBuild(Review, data);
   if (!valid) {
@@ -61,6 +68,24 @@ async function getReviewsByProduct(productId) {
   return base.find((r) => String(r.productId) === String(productId));
 }
 
+async function bulkDelete(ids) {
+  const list = Array.isArray(ids) ? ids : [ids];
+  let removed = 0;
+  for (const id of list) {
+    if (await base.deleteById(id)) removed += 1;
+  }
+  return removed;
+}
+
+async function deleteByProduct(productId) {
+  const reviews = await getReviewsByProduct(productId);
+  let removed = 0;
+  for (const review of reviews) {
+    if (await base.deleteById(review._id)) removed += 1;
+  }
+  return removed;
+}
+
 async function getProductReviewSummary(productId) {
   const product = await productRepository.findById(productId);
   if (!product) {
@@ -85,4 +110,6 @@ export const reviewRepository = {
   updateReview,
   getReviewsByProduct,
   getProductReviewSummary,
+  bulkDelete,
+  deleteByProduct,
 };

@@ -222,7 +222,9 @@ async function main() {
     demoProducts = [];
   }
 
-  const byImage = new Map(demoProducts.map((p) => [String(p.image), p]));
+  // Re-read after any removal so we never reuse stale _id references.
+  const freshProducts = await productRepository.findAll();
+  const byImage = new Map(freshProducts.map((p) => [String(p.image), p]));
   const categoryNames = [...categoryIds.keys()];
   const createdProducts = [];
 

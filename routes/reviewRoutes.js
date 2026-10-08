@@ -6,6 +6,8 @@ import {
   updateReview,
   deleteReview,
   getProductReviewSummary,
+  bulkDeleteReviews,
+  deleteReviewsByProduct,
 } from "../controllers/reviewController.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 import { reviewSubmitLimiter } from "../config/rateLimits.js";
@@ -23,5 +25,8 @@ router.get("/:id", getReview);
 router.post("/", reviewSubmitLimiter, createReview);
 router.put("/:id", ...adminOnly, updateReview);
 router.delete("/:id", ...adminOnly, deleteReview);
+// Bulk actions for the staff area.
+router.post("/bulk/delete", ...adminOnly, bulkDeleteReviews);
+router.delete("/product/:productId", ...adminOnly, deleteReviewsByProduct);
 
 export default router;

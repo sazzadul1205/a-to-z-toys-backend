@@ -51,11 +51,21 @@ export function createSqliteRepository(collectionName, model) {
 
   async function ensureTable() {
     const d = await getSqliteDb();
-    const ddl =
+    d.exec(
       columns.length === 0
         ? `CREATE TABLE IF NOT EXISTS "${collectionName}" (_id TEXT PRIMARY KEY)`
-        : `CREATE TABLE IF NOT EXISTS "${collectionName}" (_id TEXT PRIMARY KEY, ${columnDdl})`;
-    d.exec(ddl);
+        : `CREATE TABLE IF NOT EXISTS "${collectionName}" (_id TEXT PRIMARY KEY, ${columnDdl})`,
+    );
+    // Schemas evolve (new flags, renamed fields). Rather than dropping the
+    // table, add any columns the model now declares that the table lacks.
+    const existing = new Set(
+      d.prepare(`PRAGMA table_info("${collectionName}")`).all().map((c) => c.name),
+    );
+    for (const c of columns) {
+      if (!existing.has(c.name)) {
+        d.exec(`ALTER TABLE "${collectionName}" ADD COLUMN "${c.name}" ${sqlType(c.instance)}`);
+      }
+    }
   }
 
   function toRow(data) {
