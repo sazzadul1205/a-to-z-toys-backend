@@ -68,7 +68,18 @@ async function assertAnotherAdminRemains(id) {
   }
 }
 
-async function deleteUser(id) {
+// An admin cannot demote or delete their own account — doing so would either
+// lock them out mid-session or orphan the session token. The guard is enforced
+// here so it holds regardless of which route calls in.
+function assertNotSelf(id, selfId, action) {
+  if (String(id) === String(selfId)) {
+    const error = new Error(`Cannot ${action} your own account`);
+    error.status = 403;
+    throw error;
+  }
+}
+
+async function deleteUser(id, selfId) {
   const existing = await base.findById(id);
   if (!existing) {
     const error = new Error("User not found");
@@ -77,14 +88,21 @@ async function deleteUser(id) {
   }
 
   if (existing.role === "Admin") {
+    // The last-admin protection runs before the self-guard,
+    // so removing the only Admin is a 409 whether or not it
+    // is your own account.
     await assertAnotherAdminRemains(existing._id);
   }
+
+  // An admin cannot delete their own account — the session
+  // token would be orphaned mid-flight.
+  assertNotSelf(existing._id, selfId, "delete");
 
   await base.deleteById(existing._id);
   return stripPassword(existing);
 }
 
-async function updateUser(id, data) {
+async function updateUser(id, data, selfId) {
   const existing = await base.findById(id);
   if (!existing) {
     const error = new Error("User not found");
@@ -107,7 +125,14 @@ async function updateUser(id, data) {
   }
 
   if (data.role && data.role !== existing.role && data.role !== "Admin") {
+    // Demoting the only Admin is a 409 whether or not the
+    // target is your own account, so the last-admin
+    // protection runs first.
     await assertAnotherAdminRemains(existing._id);
+    // An admin cannot change the role of their own account —
+    // demoting yourself would lock the session out. Name and
+    // password changes to your own account stay allowed.
+    assertNotSelf(existing._id, selfId, "demote");
   }
 
   let newPassword = existing.password;

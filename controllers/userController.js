@@ -33,7 +33,7 @@ export async function createUser(req, res) {
 
 export async function updateUser(req, res) {
   try {
-    const updated = await userRepository.updateUser(req.params.id, req.body);
+    const updated = await userRepository.updateUser(req.params.id, req.body, req.user._id);
     res.json(updated);
   } catch (err) {
     const status = err.status || 500;
@@ -45,7 +45,7 @@ export async function updateUser(req, res) {
 
 export async function deleteUser(req, res) {
   try {
-    await userRepository.deleteUser(req.params.id);
+    await userRepository.deleteUser(req.params.id, req.user._id);
     res.json({ success: true });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
