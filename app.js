@@ -10,6 +10,7 @@ import productRoutes from "./routes/productRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import { DATA_SOURCE } from "./config/dataSource.js";
 
@@ -89,6 +90,7 @@ app.use("/products", productRoutes);
 app.use("/users", userRoutes);
 app.use("/orders", orderRoutes);
 app.use("/reviews", reviewRoutes);
+app.use("/settings", settingsRoutes);
 app.use("/upload", uploadRoutes);
 
 // 404 handler

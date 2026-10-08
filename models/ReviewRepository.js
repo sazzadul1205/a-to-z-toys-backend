@@ -12,13 +12,11 @@ async function createReview(data) {
     error.status = 400;
     throw error;
   }
-  // Reviews can be disabled per product from the staff area. When disabled,
-  // shoppers cannot submit new reviews and the storefront hides existing ones.
-  if (product.reviewsEnabled === false) {
-    const error = new Error("Reviews are disabled for this product");
-    error.status = 403;
-    throw error;
-  }
+
+  // Review visibility is a single store-wide configuration
+  // (see the settings document), not a per-product flag, so
+  // there is no per-product gate here. The controller
+  // enforces the global switch before this runs.
 
   const { valid, doc, errors } = await validateAndBuild(Review, data);
   if (!valid) {

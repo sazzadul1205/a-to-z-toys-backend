@@ -99,22 +99,6 @@ export async function toggleActive(req, res) {
   }
 }
 
-export async function setReviewsEnabled(req, res) {
-  try {
-    const value = req.body?.reviewsEnabled === false ? false : true;
-    const updated = await productRepository.setFlag(
-      req.params.id,
-      "reviewsEnabled",
-      value,
-    );
-    if (!updated) return res.status(404).json({ error: "Product not found" });
-    res.json({ success: true, reviewsEnabled: updated.reviewsEnabled !== false });
-  } catch (err) {
-    const status = err.status || 500;
-    res.status(status).json({ error: err.message });
-  }
-}
-
 export async function bulkDelete(req, res) {
   try {
     const ids = req.body?.ids || req.body?.id;
@@ -130,8 +114,8 @@ export async function bulkSetFlag(req, res) {
   try {
     const { ids, flag, value } = req.body || {};
     if (!ids || !flag) return res.status(400).json({ error: "ids and flag are required" });
-    if (!["isActive", "reviewsEnabled"].includes(flag)) {
-      return res.status(400).json({ error: "flag must be isActive or reviewsEnabled" });
+    if (flag !== "isActive") {
+      return res.status(400).json({ error: "flag must be isActive" });
     }
     const updated = await productRepository.bulkSetFlag(ids, flag, value === false ? false : true);
     res.json({ success: true, updated });

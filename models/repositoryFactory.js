@@ -7,6 +7,7 @@ import Product from "./Product.js";
 import Review from "./Review.js";
 import Order from "./Order.js";
 import User from "./User.js";
+import Settings from "./Settings.js";
 
 export const dataSource = DATA_SOURCE;
 
@@ -16,6 +17,7 @@ export const REGISTRY = [
   ["reviews", Review],
   ["orders", Order],
   ["users", User],
+  ["settings", Settings],
 ];
 
 export function createRepository(collectionName, model) {
