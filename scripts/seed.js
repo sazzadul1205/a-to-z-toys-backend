@@ -1,10 +1,33 @@
 import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   categoryRepository,
   productRepository,
   userRepository,
   reviewRepository,
 } from "../models/index.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const UPLOADS_DIR = path.join(__dirname, "..", "uploads", "processed");
+const IMAGE_EXTENSIONS = new Set([
+  ".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif",
+]);
+
+// List image files in a directory, sorted with natural numeric ordering.
+function listImages(dir) {
+  let files;
+  try {
+    files = fs.readdirSync(dir);
+  } catch {
+    return [];
+  }
+  return files
+    .filter((f) => IMAGE_EXTENSIONS.has(path.extname(f).toLowerCase()))
+    .sort((a, b) => a.localeCompare(b, "en-US", { numeric: true }));
+}
 
 const FORCE = process.argv.includes("--force");
 const RESET_PASSWORD = process.argv.includes("--reset-password");
@@ -53,9 +76,6 @@ const CATEGORIES = [
   { name: "Puzzles", icon: "🧩", description: "Quiet focus with a satisfying finish." },
 ];
 
-const img = (id) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=700&q=80`;
-
 const PRODUCTS = [
   ["Rainbow Builder Set", "Building blocks", 3499, 24, "Ages 4–8", "42 colourful wooden pieces", "Colourful wooden blocks for building big ideas and tiny worlds.", "photo-1594784053337-5b3a7f0d0b1d"],
   ["Magnetic Tiles 60pc", "Building blocks", 4999, 18, "Ages 3–7", "60 magnetic tiles in 6 shapes", "Endless magnetic construction fun – build castles, cars and more.", "photo-1587654780291-39c9404d9f5e"],
@@ -92,7 +112,7 @@ const PRODUCTS = [
   age,
   includes,
   description,
-  image: img(imageId),
+  imageId,
 }));
 
 const REVIEW_AUTHORS = [
@@ -177,10 +197,18 @@ async function main() {
     }
     console.log(`Categories ready: ${categoryIds.size}`);
 
+    const uploads = listImages(UPLOADS_DIR);
+
     const createdProducts = [];
-    for (const seed of PRODUCTS) {
+    for (let i = 0; i < PRODUCTS.length; i += 1) {
+      const seed = PRODUCTS[i];
       const categoryId = categoryIds.get(seed.category);
       if (!categoryId) continue;
+
+      const image =
+        uploads.length > 0
+          ? `/uploads/${uploads[i % uploads.length]}`
+          : `https://images.unsplash.com/${seed.imageId}?auto=format&fit=crop&w=700&q=80`;
 
       const existing = existingProducts.find(
         (p) => p.name.toLowerCase() === seed.name.toLowerCase(),
@@ -193,7 +221,7 @@ async function main() {
           price: seed.price,
           stock: seed.stock,
           categoryId,
-          image: seed.image,
+          image,
           details: { age: seed.age, includes: seed.includes },
         }));
       createdProducts.push(product);

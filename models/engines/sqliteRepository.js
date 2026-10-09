@@ -1,5 +1,7 @@
 import { SQLITE_DB_PATH } from "../../config/dataSource.js";
 import { createBaseRepository } from "../BaseRepository.js";
+import fs from "node:fs";
+import path from "node:path";
 import {
   schemaColumns,
   sqlType,
@@ -33,6 +35,8 @@ export function closeSqliteDb() {
 
 export async function getSqliteDb() {
   if (db) return db;
+  const dir = path.dirname(sqlitePath);
+  if (dir && !fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   const betterSqlite3 = (await import("better-sqlite3")).default;
   db = new betterSqlite3(sqlitePath);
   if (sqlitePath !== ":memory:") {
