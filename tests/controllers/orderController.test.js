@@ -25,21 +25,18 @@ describe("Order API", () => {
       const { product, user } = await seedBasics(10, 5);
       const res = await api().post("/orders").send({
         userId: user._id,
-        productId: product._id,
-        quantity: 3,
-        totalPrice: 0, // should be ignored
+        items: [{ productId: product._id, quantity: 3 }],
       });
       expect(res.status).toBe(201);
-      expect(res.body.totalPrice).toBe(15);
-      expect(res.body.status).toBe("Pending");
+      expect(res.body.total).toBe(15);
+      expect(res.body.status).toBe("Completed");
     });
 
     it("rejects unknown user", async () => {
       const { product } = await seedBasics();
       const res = await api().post("/orders").send({
         userId: "000000000000000000000000",
-        productId: product._id,
-        quantity: 1,
+        items: [{ productId: product._id, quantity: 1 }],
       });
       expect(res.status).toBe(400);
     });
@@ -48,8 +45,7 @@ describe("Order API", () => {
       const { user } = await seedBasics();
       const res = await api().post("/orders").send({
         userId: user._id,
-        productId: "000000000000000000000000",
-        quantity: 1,
+        items: [{ productId: "000000000000000000000000", quantity: 1 }],
       });
       expect(res.status).toBe(400);
     });
@@ -58,8 +54,7 @@ describe("Order API", () => {
       const { product, user } = await seedBasics();
       const res = await api().post("/orders").send({
         userId: user._id,
-        productId: product._id,
-        quantity: 1.5,
+        items: [{ productId: product._id, quantity: 1.5 }],
       });
       expect(res.status).toBe(400);
     });
@@ -68,8 +63,7 @@ describe("Order API", () => {
       const { product, user } = await seedBasics();
       const res = await api().post("/orders").send({
         userId: user._id,
-        productId: product._id,
-        quantity: 0,
+        items: [{ productId: product._id, quantity: 0 }],
       });
       expect(res.status).toBe(400);
     });
@@ -78,8 +72,7 @@ describe("Order API", () => {
       const { product, user } = await seedBasics(2);
       const res = await api().post("/orders").send({
         userId: user._id,
-        productId: product._id,
-        quantity: 5,
+        items: [{ productId: product._id, quantity: 5 }],
       });
       expect(res.status).toBe(409);
     });
@@ -88,8 +81,7 @@ describe("Order API", () => {
       const { product, user } = await seedBasics(10);
       await api().post("/orders").send({
         userId: user._id,
-        productId: product._id,
-        quantity: 4,
+        items: [{ productId: product._id, quantity: 4 }],
       });
       const p = await api().get(`/products/${product._id}`);
       expect(p.body.stock).toBe(6);
@@ -101,39 +93,36 @@ describe("Order API", () => {
       const { product, user } = await seedBasics();
       await api().post("/orders").send({
         userId: user._id,
-        productId: product._id,
-        quantity: 1,
+        items: [{ productId: product._id, quantity: 1 }],
       });
       const res = await api().get(`/orders?userId=${user._id}`);
-      expect(res.body).toHaveLength(1);
+      expect(res.body.orders).toHaveLength(1);
     });
 
     it("filters by status", async () => {
       const { product, user } = await seedBasics();
       await api().post("/orders").send({
         userId: user._id,
-        productId: product._id,
-        quantity: 1,
+        items: [{ productId: product._id, quantity: 1 }],
       });
-      const res = await api().get("/orders?status=Pending");
-      expect(res.body).toHaveLength(1);
+      const res = await api().get("/orders?status=Completed");
+      expect(res.body.orders).toHaveLength(1);
     });
   });
 
   describe("PUT /orders/:id", () => {
-    it("updates status to Processing", async () => {
+    it("updates status to Completed", async () => {
       const { product, user } = await seedBasics();
       const order = (
         await api().post("/orders").send({
           userId: user._id,
-          productId: product._id,
-          quantity: 1,
+          items: [{ productId: product._id, quantity: 1 }],
         })
       ).body;
       const res = await api()
         .put(`/orders/${order._id}`)
-        .send({ status: "Processing" });
-      expect(res.body.status).toBe("Processing");
+        .send({ status: "Completed" });
+      expect(res.body.status).toBe("Completed");
     });
 
     it("restores stock when cancelled", async () => {
@@ -141,8 +130,7 @@ describe("Order API", () => {
       const order = (
         await api().post("/orders").send({
           userId: user._id,
-          productId: product._id,
-          quantity: 4,
+          items: [{ productId: product._id, quantity: 4 }],
         })
       ).body;
       await api().put(`/orders/${order._id}`).send({ status: "Cancelled" });
@@ -155,12 +143,11 @@ describe("Order API", () => {
       const order = (
         await api().post("/orders").send({
           userId: user._id,
-          productId: product._id,
-          quantity: 4,
+          items: [{ productId: product._id, quantity: 4 }],
         })
       ).body;
       await api().put(`/orders/${order._id}`).send({ status: "Cancelled" });
-      await api().put(`/orders/${order._id}`).send({ status: "Processing" });
+      await api().put(`/orders/${order._id}`).send({ status: "Completed" });
       const p = await api().get(`/products/${product._id}`);
       expect(p.body.stock).toBe(6);
     });
@@ -170,8 +157,7 @@ describe("Order API", () => {
       const order = (
         await api().post("/orders").send({
           userId: user._id,
-          productId: product._id,
-          quantity: 1,
+          items: [{ productId: product._id, quantity: 1 }],
         })
       ).body;
       const res = await api()
@@ -185,8 +171,7 @@ describe("Order API", () => {
       const order = (
         await api().post("/orders").send({
           userId: user._id,
-          productId: product._id,
-          quantity: 1,
+          items: [{ productId: product._id, quantity: 1 }],
         })
       ).body;
       const res = await api().put(`/orders/${order._id}`).send({});
@@ -200,8 +185,7 @@ describe("Order API", () => {
       const order = (
         await api().post("/orders").send({
           userId: user._id,
-          productId: product._id,
-          quantity: 4,
+          items: [{ productId: product._id, quantity: 4 }],
         })
       ).body;
       await api().delete(`/orders/${order._id}`);

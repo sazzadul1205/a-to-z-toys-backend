@@ -2,16 +2,38 @@ import { orderRepository } from "../models/index.js";
 
 export async function listOrders(req, res) {
   try {
-    const { userId, status } = req.query;
-    let orders;
+    const { userId, status, page = 1, limit = 20, sort = "createdAt", order = "desc" } = req.query;
+
+    let orders = await orderRepository.findAll();
+
     if (userId) {
-      orders = await orderRepository.getOrdersByUser(userId);
-    } else if (status) {
-      orders = await orderRepository.getOrdersByStatus(status);
-    } else {
-      orders = await orderRepository.findAll();
+      orders = orders.filter((o) => String(o.userId) === String(userId));
     }
-    res.json(orders);
+    if (status) {
+      orders = orders.filter((o) => o.status === status);
+    }
+
+    const sortFn = (a, b) => {
+      let valA = a[sort];
+      let valB = b[sort];
+      if (valA instanceof Date) valA = valA.getTime();
+      if (valB instanceof Date) valB = valB.getTime();
+      if (valA < valB) return order === "asc" ? -1 : 1;
+      if (valA > valB) return order === "asc" ? 1 : -1;
+      return 0;
+    };
+    orders.sort(sortFn);
+
+    const total = orders.length;
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const start = (pageNum - 1) * limitNum;
+    const paginated = orders.slice(start, start + limitNum);
+
+    res.json({
+      orders: paginated,
+      pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

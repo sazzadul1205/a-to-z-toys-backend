@@ -24,3 +24,39 @@ export async function updateReviewSettings(req, res) {
     );
   }
 }
+
+export async function updateInventorySettings(req, res) {
+  try {
+    const value = req.body?.inventoryManagementEnabled === false ? false : true;
+    const updated = await settingsRepository.updateSettings({
+      inventoryManagementEnabled: value,
+    });
+    res.json({
+      success: true,
+      inventoryManagementEnabled: updated.inventoryManagementEnabled !== false,
+    });
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json(
+      err.errors ? { errors: err.errors } : { error: err.message },
+    );
+  }
+}
+
+export async function updateOrderProcessingSettings(req, res) {
+  try {
+    const value = req.body?.orderProcessingEnabled === false ? false : true;
+    const updated = await settingsRepository.updateSettings({
+      orderProcessingEnabled: value,
+    });
+    res.json({
+      success: true,
+      orderProcessingEnabled: updated.orderProcessingEnabled !== false,
+    });
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json(
+      err.errors ? { errors: err.errors } : { error: err.message },
+    );
+  }
+}

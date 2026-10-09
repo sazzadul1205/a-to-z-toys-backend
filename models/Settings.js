@@ -5,6 +5,8 @@ import mongoose from "mongoose";
 const settingsSchema = new mongoose.Schema({
   _id: { type: String, required: true },
   reviewsEnabled: { type: Boolean, default: true },
+  inventoryManagementEnabled: { type: Boolean, default: true },
+  orderProcessingEnabled: { type: Boolean, default: true },
 });
 
 export default mongoose.model("Settings", settingsSchema);

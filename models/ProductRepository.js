@@ -2,6 +2,7 @@ import { createRepository } from "./repositoryFactory.js";
 import { validateAndBuild } from "../config/validate.js";
 import Product from "./Product.js";
 import { categoryRepository } from "./CategoryRepository.js";
+import { stockMovementRepository } from "./StockMovementRepository.js";
 import { isInventoryEnabled } from "../config/features.js";
 
 const base = createRepository("products", Product);
@@ -88,25 +89,82 @@ async function getProductsByCategory(categoryId) {
   return (await base.find((p) => String(p.categoryId) === String(categoryId))).map(normalize);
 }
 
-async function decrementStock(id, quantity) {
-  if (!isInventoryEnabled()) return { _id: id, stock: "unmanaged" };
-  const product = await base.findById(id);
-  if (!product) return null;
-  return base.updateById(id, { stock: product.stock - quantity });
-}
-
-async function incrementStock(id, quantity) {
-  if (!isInventoryEnabled()) return { _id: id, stock: "unmanaged" };
-  const product = await base.findById(id);
-  if (!product) return null;
-  return base.updateById(id, { stock: product.stock + quantity });
-}
-
 async function checkStock(id, quantity) {
   if (!isInventoryEnabled()) return { available: true, current: "unlimited" };
   const product = await base.findById(id);
   if (!product) return { available: false, current: 0 };
   return { available: product.stock >= quantity, current: product.stock };
+}
+
+async function recordStockMovement({
+  productId,
+  type,
+  quantity,
+  previousStock,
+  newStock,
+  reason,
+  referenceId = null,
+  referenceType = "Manual",
+  userId = null,
+}) {
+  return stockMovementRepository.createMovement({
+    productId,
+    type,
+    quantity,
+    previousStock,
+    newStock,
+    reason,
+    referenceId,
+    referenceType,
+    userId,
+  });
+}
+
+async function adjustStockWithMovement(id, adjustment, reason, options = {}) {
+  if (!isInventoryEnabled()) return { _id: id, stock: "unmanaged" };
+  const product = await base.findById(id);
+  if (!product) return null;
+
+  const newStock = product.stock + adjustment;
+  if (newStock < 0) {
+    const error = new Error(`Insufficient stock (current: ${product.stock})`);
+    error.status = 409;
+    throw error;
+  }
+
+  const updated = await base.updateById(id, { stock: newStock });
+
+  await recordStockMovement({
+    productId: id,
+    type: options.type || "adjustment",
+    quantity: adjustment,
+    previousStock: product.stock,
+    newStock,
+    reason,
+    referenceId: options.referenceId,
+    referenceType: options.referenceType || "Manual",
+    userId: options.userId,
+  });
+
+  return updated;
+}
+
+async function decrementStock(id, quantity, options = {}) {
+  return adjustStockWithMovement(id, -quantity, options.reason || "Sale", {
+    type: "sale",
+    referenceId: options.referenceId,
+    referenceType: "Order",
+    userId: options.userId,
+  });
+}
+
+async function incrementStock(id, quantity, options = {}) {
+  return adjustStockWithMovement(id, quantity, options.reason || "Restock", {
+    type: "restock",
+    referenceId: options.referenceId,
+    referenceType: options.referenceType || "Manual",
+    userId: options.userId,
+  });
 }
 
 async function setFlag(id, flag, value) {
@@ -197,6 +255,8 @@ export const productRepository = {
   getProductsByCategory,
   decrementStock,
   incrementStock,
+  adjustStockWithMovement,
+  recordStockMovement,
   checkStock,
   setFlag,
   toggleActive,

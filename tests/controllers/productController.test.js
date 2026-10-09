@@ -56,8 +56,8 @@ describe("Product API", () => {
       await api().post("/products").send(validProduct(c2._id, { name: "P2" }));
 
       const res = await api().get(`/products?categoryId=${c1._id}`);
-      expect(res.body).toHaveLength(1);
-      expect(res.body[0].name).toBe("P1");
+      expect(res.body.products).toHaveLength(1);
+      expect(res.body.products[0].name).toBe("P1");
     });
 
     it("returns all products when no filter", async () => {
@@ -65,7 +65,7 @@ describe("Product API", () => {
       await api().post("/products").send(validProduct(c._id, { name: "P1" }));
       await api().post("/products").send(validProduct(c._id, { name: "P2" }));
       const res = await api().get("/products");
-      expect(res.body).toHaveLength(2);
+      expect(res.body.products).toHaveLength(2);
     });
   });
 

@@ -19,7 +19,7 @@ async function requesterIsAdmin(req) {
 
 export async function listProducts(req, res) {
   try {
-    const { categoryId } = req.query;
+    const { categoryId, page = 1, limit = 20, sort = "name", order = "asc" } = req.query;
     let products;
     if (categoryId) {
       products = await productRepository.getProductsByCategory(categoryId);
@@ -31,7 +31,28 @@ export async function listProducts(req, res) {
     if (!(await requesterIsAdmin(req))) {
       products = products.filter((p) => p.isActive !== false);
     }
-    res.json(products);
+
+    const sortFn = (a, b) => {
+      let valA = a[sort];
+      let valB = b[sort];
+      if (typeof valA === "string") valA = valA.toLowerCase();
+      if (typeof valB === "string") valB = valB.toLowerCase();
+      if (valA < valB) return order === "asc" ? -1 : 1;
+      if (valA > valB) return order === "asc" ? 1 : -1;
+      return 0;
+    };
+    products.sort(sortFn);
+
+    const total = products.length;
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const start = (pageNum - 1) * limitNum;
+    const paginated = products.slice(start, start + limitNum);
+
+    res.json({
+      products: paginated,
+      pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -121,5 +142,45 @@ export async function bulkSetFlag(req, res) {
     res.json({ success: true, updated });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+}
+
+export async function adjustStock(req, res) {
+  try {
+    const { id } = req.params;
+    const { adjustment, reason } = req.body || {};
+
+    if (!Number.isInteger(adjustment)) {
+      return res.status(400).json({ error: "adjustment must be an integer (positive to add, negative to remove)" });
+    }
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: "reason is required for stock adjustments" });
+    }
+
+    const product = await productRepository.findById(id);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const newStock = product.stock + adjustment;
+    if (newStock < 0) {
+      return res.status(400).json({ error: `Cannot reduce stock below zero (current: ${product.stock}, adjustment: ${adjustment})` });
+    }
+
+    const updated = await productRepository.updateById(id, { stock: newStock });
+    res.json({
+      success: true,
+      product: updated,
+      adjustment,
+      reason: reason.trim(),
+      previousStock: product.stock,
+      newStock,
+    });
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json(
+      err.errors ? { errors: err.errors } : { error: err.message },
+    );
   }
 }

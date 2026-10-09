@@ -9,7 +9,9 @@ const categoryId = new mongoose.Types.ObjectId();
 const validProduct = {
   name: "Chess Set",
   price: 29.99,
+  buyPrice: 15.00,
   stock: 10,
+  sku: "CHESS-SET-001",
   categoryId,
 };
 
@@ -53,6 +55,7 @@ describe("validateAndBuild", () => {
       name: "x",
       price: -5,
       stock: -2,
+      sku: "TEST-SKU",
       categoryId,
     });
 

@@ -8,7 +8,11 @@ const base = createRepository("settings", Settings);
 // the defaults on first use, so a fresh install boots with a
 // complete record instead of null checks at every call site.
 const SETTINGS_ID = "store";
-const DEFAULTS = { reviewsEnabled: true };
+const DEFAULTS = {
+  reviewsEnabled: true,
+  inventoryManagementEnabled: true,
+  orderProcessingEnabled: true,
+};
 
 async function getSettings() {
   const existing = await base.findById(SETTINGS_ID);

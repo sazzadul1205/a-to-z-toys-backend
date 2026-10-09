@@ -3,15 +3,21 @@ import { validateAndBuild } from "../config/validate.js";
 import Order from "./Order.js";
 import { productRepository } from "./ProductRepository.js";
 import { userRepository } from "./UserRepository.js";
+import { stockMovementRepository } from "./StockMovementRepository.js";
 import { isOrderProcessingEnabled, isInventoryEnabled } from "../config/features.js";
 
 const base = createRepository("orders", Order);
 
 const IMMUTABLE_ON_UPDATE = [
   "userId",
-  "productId",
-  "quantity",
-  "totalPrice",
+  "items",
+  "subtotal",
+  "discount",
+  "tax",
+  "total",
+  "amountPaid",
+  "change",
+  "saleNumber",
   "_id",
   "createdAt",
 ];
@@ -24,7 +30,7 @@ async function createOrder(data) {
     throw error;
   }
 
-  const { userId, productId, quantity } = data;
+  const { userId, items, customerName, customerPhone, paymentMethod, discount, tax, notes, cashierId } = data;
 
   const user = await userRepository.findById(userId);
   if (!user) {
@@ -33,37 +39,77 @@ async function createOrder(data) {
     throw error;
   }
 
-  const product = await productRepository.findById(productId);
-  if (!product) {
-    const error = new Error("productId does not reference an existing product");
+  if (!items || !items.length) {
+    const error = new Error("At least one item is required");
     error.status = 400;
     throw error;
   }
 
-  const qty = Number(quantity);
-  if (!Number.isInteger(qty) || qty <= 0) {
-    const error = new Error("quantity must be a positive integer");
-    error.status = 400;
-    throw error;
+  const validatedItems = [];
+  let subtotal = 0;
+
+  for (const item of items) {
+    const product = await productRepository.findById(item.productId);
+    if (!product) {
+      const error = new Error(`Product ${item.productId} not found`);
+      error.status = 400;
+      throw error;
+    }
+
+    const qty = Number(item.quantity);
+    if (!Number.isInteger(qty) || qty <= 0) {
+      const error = new Error("quantity must be a positive integer");
+      error.status = 400;
+      throw error;
+    }
+
+    const stockCheck = await productRepository.checkStock(product._id, qty);
+    if (!stockCheck.available) {
+      const error = new Error(
+        `Insufficient stock for ${product.name}. Requested ${qty}, available ${stockCheck.current}`,
+      );
+      error.status = 409;
+      throw error;
+    }
+
+    const price = Number(item.price) || product.price;
+    const total = Number((price * qty).toFixed(2));
+    subtotal = Number((subtotal + total).toFixed(2));
+
+    validatedItems.push({
+      productId: product._id,
+      productName: product.name,
+      sku: product.sku,
+      quantity: qty,
+      price,
+      total,
+    });
   }
 
-  const stockCheck = await productRepository.checkStock(productId, qty);
-  if (!stockCheck.available) {
-    const error = new Error(
-      `Insufficient stock. Requested ${qty}, available ${stockCheck.current}`,
-    );
-    error.status = 409;
-    throw error;
-  }
+  const discountAmount = Number(discount) || 0;
+  const taxAmount = Number(tax) || 0;
+  const total = Number((subtotal - discountAmount + taxAmount).toFixed(2));
+  const amountPaid = Number(data.amountPaid) || total;
+  const change = Math.max(0, Number((amountPaid - total).toFixed(2)));
 
-  const totalPrice = Number((product.price * qty).toFixed(2));
+  const saleNumber = Order.generateSaleNumber();
 
   const orderData = {
+    saleNumber,
     userId,
-    productId,
-    quantity: qty,
-    totalPrice,
-    status: "Pending",
+    customerName: customerName?.trim() || "",
+    customerPhone: customerPhone?.trim() || "",
+    items: validatedItems,
+    paymentMethod: paymentMethod || "cash",
+    subtotal,
+    discount: discountAmount,
+    tax: taxAmount,
+    total,
+    amountPaid,
+    change,
+    status: "Completed",
+    notes: notes?.trim() || "",
+    cashierId: cashierId || userId,
   };
 
   const { valid, doc, errors } = await validateAndBuild(Order, orderData);
@@ -75,9 +121,16 @@ async function createOrder(data) {
   }
 
   const created = await base.create(doc);
+
   if (isInventoryEnabled()) {
-    await productRepository.decrementStock(productId, qty);
+    for (const item of validatedItems) {
+      await productRepository.decrementStock(item.productId, item.quantity, {
+        referenceId: created._id,
+        reason: `POS Sale ${saleNumber}`,
+      });
+    }
   }
+
   return created;
 }
 
@@ -117,32 +170,37 @@ async function updateOrder(id, data) {
     return existing;
   }
 
-  const product = await productRepository.findById(existing.productId);
-  if (!product) {
-    const error = new Error("Referenced product no longer exists");
-    error.status = 500;
-    throw error;
-  }
-
   if (isInventoryEnabled()) {
     if (newStatus === "Cancelled" && oldStatus !== "Cancelled") {
-      await productRepository.incrementStock(existing.productId, existing.quantity);
+      for (const item of existing.items) {
+        await productRepository.incrementStock(item.productId, item.quantity, {
+          referenceId: existing._id,
+          reason: `Order ${existing.saleNumber} cancelled`,
+        });
+      }
     }
 
     if (newStatus !== "Cancelled" && oldStatus === "Cancelled") {
-      const stockCheck = await productRepository.checkStock(existing.productId, existing.quantity);
-      if (!stockCheck.available) {
-        const error = new Error(
-          `Cannot reactivate order — insufficient stock (${stockCheck.current} available, ${existing.quantity} needed)`,
-        );
-        error.status = 409;
-        throw error;
+      for (const item of existing.items) {
+        const stockCheck = await productRepository.checkStock(item.productId, item.quantity);
+        if (!stockCheck.available) {
+          const error = new Error(
+            `Cannot reactivate order — insufficient stock for ${item.productName} (${stockCheck.current} available, ${item.quantity} needed)`,
+          );
+          error.status = 409;
+          throw error;
+        }
       }
-      await productRepository.decrementStock(existing.productId, existing.quantity);
+      for (const item of existing.items) {
+        await productRepository.decrementStock(item.productId, item.quantity, {
+          referenceId: existing._id,
+          reason: `Order ${existing.saleNumber} reactivated`,
+        });
+      }
     }
   }
 
-  const merged = { ...existing, status: newStatus };
+  const merged = { ...existing, status: newStatus, updatedAt: new Date() };
   const { valid, doc, errors } = await validateAndBuild(Order, merged);
   if (!valid) {
     const error = new Error("Validation failed");
@@ -170,7 +228,12 @@ async function deleteOrder(id) {
   }
 
   if (isInventoryEnabled() && existing.status !== "Cancelled") {
-    await productRepository.incrementStock(existing.productId, existing.quantity);
+    for (const item of existing.items) {
+      await productRepository.incrementStock(item.productId, item.quantity, {
+        referenceId: existing._id,
+        reason: `Order ${existing.saleNumber} deleted`,
+      });
+    }
   }
 
   return base.deleteById(id);
