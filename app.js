@@ -14,6 +14,9 @@ import settingsRoutes from "./routes/settingsRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import inventoryRoutes from "./routes/inventoryRoutes.js";
 import purchaseOrderRoutes from "./routes/purchaseOrderRoutes.js";
+import expenseCategoryRoutes from "./routes/expenseCategoryRoutes.js";
+import expenseRoutes from "./routes/expenseRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
 import { DATA_SOURCE } from "./config/dataSource.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -96,6 +99,9 @@ app.use("/settings", settingsRoutes);
 app.use("/upload", uploadRoutes);
 app.use("/inventory", inventoryRoutes);
 app.use("/purchase-orders", purchaseOrderRoutes);
+app.use("/expense-categories", expenseCategoryRoutes);
+app.use("/expenses", expenseRoutes);
+app.use("/analytics", analyticsRoutes);
 
 // 404 handler
 app.use((req, res) => {
