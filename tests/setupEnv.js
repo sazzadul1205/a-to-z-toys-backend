@@ -8,3 +8,4 @@ const __dirname = path.dirname(__filename);
 // is in place before models/JsonRepository.js is evaluated and captures
 // DATA_DIR. Tests then read and write here instead of the real ./data.
 process.env.DATA_DIR = path.join(__dirname, "..", ".test-data");
+process.env.LOG_LEVEL = "error";

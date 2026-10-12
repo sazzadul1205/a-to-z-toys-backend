@@ -37,6 +37,37 @@ taking precedence). See `README.md` for the full table. Key entries:
 `INVENTORY_MANAGEMENT`. Rate-limit knobs: `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`,
 `REVIEW_SUBMIT_LIMIT`, `REVIEW_SUBMIT_WINDOW_MS`.
 
+## Logging
+- `config/logger.js` provides a leveled logger (`error`, `warn`, `info`, `http`, `debug`).
+  Console output is always on; file output writes to `data/logs/<date>.log`.
+- `LOG_LEVEL` env var sets the threshold (default `info`); `LOG_FILE=false` disables
+  file output in tests or constrained environments.
+- `middleware/logging.js` assigns a request ID, logs every HTTP request/response
+  (method, URL, status, duration), and logs unhandled errors with stack traces.
+  Routes: `GET /logs` (list), `GET /logs/:filename` (read), `DELETE /logs` (clear) —
+  all admin-only.
+
+## Backup & Restore
+- `services/backupService.js` exports all collections via the repository layer
+  (works across JSON, SQLite, and MySQL backends) to timestamped JSON files in
+  `data/backups/`.
+- Routes (admin-only):
+  - `GET /backup` — list available backups
+  - `POST /backup` — create a new backup
+  - `GET /backup/:filename/data` — preview backup contents
+  - `POST /backup/:filename/restore` — restore (optionally `skipCollections`, `clearFirst`)
+  - `DELETE /backup/:filename` — delete a backup
+- Admin route is registered in `src/App.jsx`; UI lives in
+  `src/Frontend/Pages/BackupRestore/`.
+
+## Order credit / debt
+- `POST /orders` accepts `paymentMethod: "due"`; the order is created with
+  `status: "Due"`, `amountPaid: 0`, and a `balance` equal to the order total.
+- `discountType: "fixed"|"percentage"` and `discountValue` are stored alongside
+  `discount` so the frontend can round-trip the discount correctly.
+- `customerEmail` and `customerAddress` are accepted and stored.
+- Orders with `amountPaid < total` carry a `balance` representing what is still owed.
+
 ## Auth model
 - `POST /auth/login` returns `{ token, user }` **only for `role: "Admin"`**; non-admins
   get `403`, so there is no customer session to manage.

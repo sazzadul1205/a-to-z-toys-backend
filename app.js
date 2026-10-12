@@ -4,6 +4,8 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { apiLimiter } from "./config/rateLimits.js";
+import { logger } from "./config/logger.js";
+import { requestLogger, errorLogger } from "./middleware/logging.js";
 import authRoutes from "./routes/authRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
@@ -17,6 +19,8 @@ import purchaseOrderRoutes from "./routes/purchaseOrderRoutes.js";
 import expenseCategoryRoutes from "./routes/expenseCategoryRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import backupRoutes from "./routes/backupRoutes.js";
+import logRoutes from "./routes/logRoutes.js";
 import { DATA_SOURCE } from "./config/dataSource.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -66,21 +70,16 @@ app.use("/uploads", express.static(UPLOADS_DIR, {
 // Rate limiting
 app.use(apiLimiter);
 
+// Request logging
+app.use(requestLogger);
+
 // Body parsing
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Request logging (development)
-if (process.env.NODE_ENV !== "production") {
-  app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
-    next();
-  });
-}
-
 // Health check
 app.get("/", (req, res) => {
-  res.json({ 
+  res.json({
     message: "a-to-z-toys API is running",
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || "development",
@@ -102,6 +101,11 @@ app.use("/purchase-orders", purchaseOrderRoutes);
 app.use("/expense-categories", expenseCategoryRoutes);
 app.use("/expenses", expenseRoutes);
 app.use("/analytics", analyticsRoutes);
+app.use("/backup", backupRoutes);
+app.use("/logs", logRoutes);
+
+// Error logging — must come before the error handler
+app.use(errorLogger);
 
 // 404 handler
 app.use((req, res) => {
@@ -110,10 +114,9 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
   const status = err.status || 500;
   const message = status === 500 ? "Internal server error" : err.message;
-  res.status(status).json({ 
+  res.status(status).json({
     error: message,
     ...(err.errors && { errors: err.errors }),
     ...(err.code && { code: err.code }),

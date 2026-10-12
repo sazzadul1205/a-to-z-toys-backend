@@ -30,7 +30,7 @@ async function createOrder(data) {
     throw error;
   }
 
-  const { userId, items, customerName, customerPhone, paymentMethod, discount, tax, notes, cashierId } = data;
+  const { userId, items, customerName, customerPhone, customerEmail, customerAddress, paymentMethod, discount, discountType, tax, notes, cashierId } = data;
 
   const user = await userRepository.findById(userId);
   if (!user) {
@@ -86,11 +86,26 @@ async function createOrder(data) {
     });
   }
 
-  const discountAmount = Number(discount) || 0;
+  const discountValue = Number(discount) || 0;
   const taxAmount = Number(tax) || 0;
+  const discountAmount =
+    discountType === "percentage"
+      ? Number(((subtotal * discountValue) / 100).toFixed(2))
+      : discountValue;
   const total = Number((subtotal - discountAmount + taxAmount).toFixed(2));
-  const amountPaid = Number(data.amountPaid) || total;
+
+  // For "due" (credit) orders the customer pays nothing now.
+  // For cash/card/mobile the client sends the amount paid; if omitted, default to total.
+  let amountPaid;
+  if (paymentMethod === "due") {
+    amountPaid = 0;
+  } else {
+    amountPaid = Number(data.amountPaid) || total;
+    if (amountPaid > total) amountPaid = total;
+  }
+
   const change = Math.max(0, Number((amountPaid - total).toFixed(2)));
+  const balance = Math.max(0, Number((total - amountPaid).toFixed(2)));
 
   const saleNumber = Order.generateSaleNumber();
 
@@ -99,17 +114,22 @@ async function createOrder(data) {
     userId,
     customerName: customerName?.trim() || "",
     customerPhone: customerPhone?.trim() || "",
+    customerEmail: customerEmail?.trim() || "",
+    customerAddress: customerAddress?.trim() || "",
     items: validatedItems,
     paymentMethod: paymentMethod || "cash",
+    discountType: discountType || "fixed",
     subtotal,
     discount: discountAmount,
     tax: taxAmount,
     total,
     amountPaid,
     change,
-    status: "Completed",
+    balance,
+    status: paymentMethod === "due" ? "Due" : "Completed",
     notes: notes?.trim() || "",
     cashierId: cashierId || userId,
+    debtRepayment: Number(data.debtRepayment) || 0,
   };
 
   const { valid, doc, errors } = await validateAndBuild(Order, orderData);
