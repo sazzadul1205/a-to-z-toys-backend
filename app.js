@@ -19,15 +19,30 @@ import purchaseOrderRoutes from "./routes/purchaseOrderRoutes.js";
 import expenseCategoryRoutes from "./routes/expenseCategoryRoutes.js";
 import expenseRoutes from "./routes/expenseRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import customerRoutes from "./routes/customerRoutes.js";
 import backupRoutes from "./routes/backupRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
+import templateRoutes from "./routes/templateRoutes.js";
 import { DATA_SOURCE } from "./config/dataSource.js";
+import { ensureSchema } from "./models/repositoryFactory.js";
+import { templateService } from "./services/templateService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.join(__dirname, "uploads", "processed");
 
 const app = express();
+
+// Initialize schema and default templates
+if (DATA_SOURCE !== "json") {
+  ensureSchema().then(() => {
+    templateService.ensureDefaults().catch(err => {
+      logger.error("Failed to initialize default templates", { error: err.message });
+    });
+  }).catch(err => {
+    logger.error("Failed to ensure schema", { error: err.message });
+  });
+}
 
 // Behind a reverse proxy? Set TRUST_PROXY to the number of proxy hops so that
 // req.ip (and therefore rate limiting) reflects the real client. Do not use
@@ -101,8 +116,10 @@ app.use("/purchase-orders", purchaseOrderRoutes);
 app.use("/expense-categories", expenseCategoryRoutes);
 app.use("/expenses", expenseRoutes);
 app.use("/analytics", analyticsRoutes);
+app.use("/customers", customerRoutes);
 app.use("/backup", backupRoutes);
 app.use("/logs", logRoutes);
+app.use("/templates", templateRoutes);
 
 // Error logging — must come before the error handler
 app.use(errorLogger);

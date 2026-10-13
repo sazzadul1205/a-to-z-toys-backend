@@ -8,6 +8,7 @@ import Review from "./Review.js";
 import Order from "./Order.js";
 import User from "./User.js";
 import Settings from "./Settings.js";
+import ReceiptTemplate from "./ReceiptTemplate.js";
 
 export const dataSource = DATA_SOURCE;
 
@@ -18,6 +19,7 @@ export const REGISTRY = [
   ["orders", Order],
   ["users", User],
   ["settings", Settings],
+  ["receipt_templates", ReceiptTemplate],
 ];
 
 export function createRepository(collectionName, model) {

@@ -5,7 +5,7 @@ import { productRepository } from "./models/index.js";
 import { settingsRepository } from "./models/index.js";
 import { loadFeatureSettings } from "./config/features.js";
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 
 await ensureSchema();
 // Backfill the isActive/reviewsEnabled flags on rows created before they

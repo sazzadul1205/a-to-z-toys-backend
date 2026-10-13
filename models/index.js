@@ -8,6 +8,7 @@ export { stockMovementRepository } from "./StockMovementRepository.js";
 export { purchaseOrderRepository } from "./PurchaseOrderRepository.js";
 export { expenseCategoryRepository } from "./ExpenseCategoryRepository.js";
 export { expenseRepository } from "./ExpenseRepository.js";
+export { receiptTemplateRepository } from "./ReceiptTemplateRepository.js";
 export { createBaseRepository } from "./BaseRepository.js";
 export { createJsonRepository } from "./JsonRepository.js";
 export {
