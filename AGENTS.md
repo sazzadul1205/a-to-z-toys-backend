@@ -23,11 +23,13 @@ There is no `lint` or `build` script — the static gate is the test suite
 - Listens on `http://localhost:3000`.
 - Rate-limit counters live in the API process, so the limits **must** be raised for
   the browser E2E run and read from the _API terminal_, not the Playwright terminal:
+
   ```bash
   RATE_LIMIT_MAX=100000 RATE_LIMIT_WINDOW_MS=3600000 \
   REVIEW_SUBMIT_LIMIT=10000 REVIEW_SUBMIT_WINDOW_MS=600000 \
   npm start
   ```
+
   The E2E global setup checks this and aborts with these instructions if the API is
   still throttling.
 
