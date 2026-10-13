@@ -43,26 +43,26 @@ an explicit strip in the repository means a stray field cannot leak one.
 
 ### Accounts
 
-| Rule | Behaviour |
-|---|---|
-| Email must match `/^\S+@\S+\.\S+$/` | 400 otherwise |
-| Password minimum 6 characters | 400 otherwise |
-| Duplicate email | 409 |
+| Rule                                | Behaviour                                   |
+| ----------------------------------- | ------------------------------------------- |
+| Email must match `/^\S+@\S+\.\S+$/` | 400 otherwise                               |
+| Password minimum 6 characters       | 400 otherwise                               |
+| Duplicate email                     | 409                                         |
 | Demote or delete the **last** Admin | 409, so the staff area cannot be locked out |
-| Change an Admin's password | Allowed — it does not count as demotion |
+| Change an Admin's password          | Allowed — it does not count as demotion     |
 
 Non-admin accounts exist for review and order records; they simply cannot sign
 in.
 
 ## Access rules
 
-| Surface | Access |
-|---|---|
-| `GET /products`, `/categories`, `/reviews`, `/reviews/product/:id/summary` | Public |
-| `POST /reviews` | Public, within a submit budget (see below) |
-| `POST /auth/login` | Public, Admin only |
-| `/uploads/*` static files | Public |
-| Every other write, plus `/users`, `/orders`, `/upload` | Admin token |
+| Surface                                                                    | Access                                     |
+| -------------------------------------------------------------------------- | ------------------------------------------ |
+| `GET /products`, `/categories`, `/reviews`, `/reviews/product/:id/summary` | Public                                     |
+| `POST /reviews`                                                            | Public, within a submit budget (see below) |
+| `POST /auth/login`                                                         | Public, Admin only                         |
+| `/uploads/*` static files                                                  | Public                                     |
+| Every other write, plus `/users`, `/orders`, `/upload`                     | Admin token                                |
 
 Unauthenticated → `401`. Authenticated but not an admin → `403`.
 
@@ -76,24 +76,24 @@ copy it to a local (git-ignored) `.env` and `dotenv` loads it at startup, with
 **shell values always taking precedence** over anything in `.env`. Set
 `DATA_SOURCE` to switch engines (see [Storage backends](#storage-backends)).
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `PORT` | `3000` | API port |
-| `CORS_ORIGIN` | `*` | Allowed browser origin |
-| `JWT_SECRET` | generated | Signing key. If unset, a random secret is written to `data/.jwt-secret` (git-ignored) so tokens survive restarts. **Set it explicitly in production** — rotating it signs everyone out. |
-| `JWT_EXPIRES_IN` | `1d` | Admin session length |
-| `TRUST_PROXY` | unset | Number of proxy hops to trust for `req.ip`. Set this only when actually behind a proxy; `true` would let clients spoof `X-Forwarded-For` and defeat rate limiting. |
-| `REVIEW_SUBMIT_LIMIT` | `10` | `POST /reviews` submissions per window per IP |
-| `REVIEW_SUBMIT_WINDOW_MS` | `3600000` | Length of the review submission window |
-| `RATE_LIMIT_MAX` | `100` | Requests per window per IP across the general API |
-| `RATE_LIMIT_WINDOW_MS` | `900000` | Length of the general API window |
-| `DATA_DIR` | `./data` | Store location. The Jest suite points this at `.test-data/`. |
-| `ORDER_PROCESSING` | enabled | `false` returns `403` on all order writes |
-| `INVENTORY_MANAGEMENT` | enabled | `false` stops tracking stock |
-| `DATA_SOURCE` | `json` | Storage engine: `json` (files in `DATA_DIR`), `sqlite`, or `mysql`. |
-| `DB_SQLITE_PATH` | `DATA_DIR/sqlite.db` | SQLite database file (only for `DATA_SOURCE=sqlite`). |
-| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | defaults | MySQL/MariaDB connection (only for `DATA_SOURCE=mysql`). |
-| `DB_SYNC` | `true` | `false` skips auto-creating tables on boot. |
+| Variable                                                      | Default              | Purpose                                                                                                                                                                                 |
+| ------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                                                        | `3000`               | API port                                                                                                                                                                                |
+| `CORS_ORIGIN`                                                 | `*`                  | Allowed browser origin                                                                                                                                                                  |
+| `JWT_SECRET`                                                  | generated            | Signing key. If unset, a random secret is written to `data/.jwt-secret` (git-ignored) so tokens survive restarts. **Set it explicitly in production** — rotating it signs everyone out. |
+| `JWT_EXPIRES_IN`                                              | `1d`                 | Admin session length                                                                                                                                                                    |
+| `TRUST_PROXY`                                                 | unset                | Number of proxy hops to trust for `req.ip`. Set this only when actually behind a proxy; `true` would let clients spoof `X-Forwarded-For` and defeat rate limiting.                      |
+| `REVIEW_SUBMIT_LIMIT`                                         | `10`                 | `POST /reviews` submissions per window per IP                                                                                                                                           |
+| `REVIEW_SUBMIT_WINDOW_MS`                                     | `3600000`            | Length of the review submission window                                                                                                                                                  |
+| `RATE_LIMIT_MAX`                                              | `100`                | Requests per window per IP across the general API                                                                                                                                       |
+| `RATE_LIMIT_WINDOW_MS`                                        | `900000`             | Length of the general API window                                                                                                                                                        |
+| `DATA_DIR`                                                    | `./data`             | Store location. The Jest suite points this at `.test-data/`.                                                                                                                            |
+| `ORDER_PROCESSING`                                            | enabled              | `false` returns `403` on all order writes                                                                                                                                               |
+| `INVENTORY_MANAGEMENT`                                        | enabled              | `false` stops tracking stock                                                                                                                                                            |
+| `DATA_SOURCE`                                                 | `json`               | Storage engine: `json` (files in `DATA_DIR`), `sqlite`, or `mysql`.                                                                                                                     |
+| `DB_SQLITE_PATH`                                              | `DATA_DIR/sqlite.db` | SQLite database file (only for `DATA_SOURCE=sqlite`).                                                                                                                                   |
+| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | defaults             | MySQL/MariaDB connection (only for `DATA_SOURCE=mysql`).                                                                                                                                |
+| `DB_SYNC`                                                     | `true`               | `false` skips auto-creating tables on boot.                                                                                                                                             |
 
 ## Storage backends
 
@@ -102,11 +102,11 @@ schemas in `models/` are the single source of truth for **validation** and for t
 **column structure** each engine creates, so switching engines needs no model
 rewrites — controllers and routes are untouched.
 
-| Engine | Driver | `DATA_SOURCE` | Notes |
-|---|---|---|---|
-| JSON files | built-in | `json` (default) | One `<collection>.json` per table in `DATA_DIR`. `DATA_DIR`/`.test-data/` isolation is unchanged. |
-| SQLite | `better-sqlite3` | `sqlite` | `DB_SQLITE_PATH` (default `DATA_DIR/sqlite.db`) holds the database. Good for local dev. |
-| MySQL / MariaDB | `mysql2` | `mysql` | Honour `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`. |
+| Engine          | Driver           | `DATA_SOURCE`    | Notes                                                                                             |
+| --------------- | ---------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
+| JSON files      | built-in         | `json` (default) | One `<collection>.json` per table in `DATA_DIR`. `DATA_DIR`/`.test-data/` isolation is unchanged. |
+| SQLite          | `better-sqlite3` | `sqlite`         | `DB_SQLITE_PATH` (default `DATA_DIR/sqlite.db`) holds the database. Good for local dev.           |
+| MySQL / MariaDB | `mysql2`         | `mysql`          | Honour `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME`.                                     |
 
 `createRepository(collection, model)` (in `models/repositoryFactory.js`) builds the
 engine-specific instance for a collection; each domain repository calls it with its
