@@ -25,7 +25,13 @@ router.put("/:id", ...adminOnly, updateExpense);
 router.delete("/:id", ...adminOnly, deleteExpense);
 router.post("/bulk/delete", ...adminOnly, bulkDeleteExpenses);
 
-// Analytics / Graphs endpoints
+// Reporting / Graphs endpoints
+router.get("/reports/summary", getExpenseSummary);
+router.get("/reports/trends", getExpenseTrends);
+router.get("/reports/by-category", getExpenseByCategory);
+router.get("/reports/top", getTopExpenses);
+
+// Backward-compatible aliases
 router.get("/analytics/summary", getExpenseSummary);
 router.get("/analytics/trends", getExpenseTrends);
 router.get("/analytics/by-category", getExpenseByCategory);

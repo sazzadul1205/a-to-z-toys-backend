@@ -9,7 +9,9 @@ schemas validate input. Every write is admin-only.
 | ----------------------- | ------------------------------------------------------------------------ |
 | `npm run dev`           | nodemon, `http://localhost:3000`.                                        |
 | `npm start`             | plain `node server.js`.                                                  |
-| `npm run seed`          | Idempotent catalogue + first admin account.                              |
+| `npm run seed`          | Unified seeder: catalogue + admin + templates + 90-day history. Flags: `--demo`, `--catalogue-only`, `--force`, `--reset-password`; `SEED_DAYS` sets the window. |
+| `npm run seed:demo`     | Same seeder with `--demo` (catalogue from uploaded images).     |
+| `npm run seed:detailed` | Same seeder (the history is included by default).            |
 | `npm test`              | Jest + supertest, `--runInBand --experimental-vm-modules` (JSON engine). |
 | `npm run test:sqlite`   | Same suite with `DATA_SOURCE=sqlite` (in-memory DB).                     |
 | `npm run test:engines`  | Runs `npm test` then `npm run test:sqlite`.                              |

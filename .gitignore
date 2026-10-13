@@ -140,6 +140,8 @@ vite.config.ts.timestamp-*
 # Data folder
 data/
 coverage/
+# Local archives of old database copies
+data-archive*/
 # Throwaway data directory used by the Jest suite
 .test-data/
 # Uploads

@@ -115,6 +115,7 @@ app.use("/inventory", inventoryRoutes);
 app.use("/purchase-orders", purchaseOrderRoutes);
 app.use("/expense-categories", expenseCategoryRoutes);
 app.use("/expenses", expenseRoutes);
+app.use("/reports", analyticsRoutes);
 app.use("/analytics", analyticsRoutes);
 app.use("/customers", customerRoutes);
 app.use("/backup", backupRoutes);
