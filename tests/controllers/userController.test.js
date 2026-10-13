@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { cleanData, validUser } from "../helpers/testEnv.js";
 import { api, setupAdmin } from "../helpers/auth.js";
+import { userRepository } from "../../models/index.js";
 
 beforeEach(async () => {
   await cleanData();
@@ -21,18 +22,15 @@ describe("User API", () => {
     });
 
     it("hashes the password on disk", async () => {
-      await api().post("/users").send(validUser());
+      const created = await api().post("/users").send(validUser());
 
-      const fs = await import("fs/promises");
-      const path = await import("path");
-      const { TEST_DATA_DIR } = await import("../helpers/testEnv.js");
-      const raw = JSON.parse(
-        await fs.readFile(path.join(TEST_DATA_DIR, "users.json"), "utf-8")
-      );
-      const alice = raw.find((u) => u.email === "alice@example.com");
-      expect(alice).toBeDefined();
-      expect(alice.password).not.toBe("secret123");
-      expect(await bcrypt.compare("secret123", alice.password)).toBe(true);
+      // Read the raw stored record (including the password field) via the
+      // repository so the assertion holds for every storage backend, not just
+      // the JSON file store.
+      const stored = await userRepository.findById(created.body._id);
+      expect(stored).toBeDefined();
+      expect(stored.password).not.toBe("secret123");
+      expect(await bcrypt.compare("secret123", stored.password)).toBe(true);
     });
 
     it("rejects invalid email", async () => {
@@ -95,14 +93,11 @@ describe("User API", () => {
         .put(`/users/${created.body._id}`)
         .send({ password: "newsecret" });
 
-      const fs = await import("fs/promises");
-      const path = await import("path");
-      const { TEST_DATA_DIR } = await import("../helpers/testEnv.js");
-      const raw = JSON.parse(
-        await fs.readFile(path.join(TEST_DATA_DIR, "users.json"), "utf-8")
-      );
-      const alice = raw.find((u) => u.email === "alice@example.com");
-      expect(await bcrypt.compare("newsecret", alice.password)).toBe(true);
+      // Read the raw stored record (including the password field) via the
+      // repository so the assertion holds for every storage backend.
+      const stored = await userRepository.findById(created.body._id);
+      expect(await bcrypt.compare("newsecret", stored.password)).toBe(true);
+      expect(await bcrypt.compare("secret123", stored.password)).toBe(false);
     });
 
     it("rejects changing to an existing email", async () => {

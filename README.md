@@ -178,11 +178,24 @@ This is not built for concurrent writers. `data/` is git-ignored.
 ## Tests
 
 ```bash
-npm test
+npm test              # JSON (file) engine, the default
+npm run test:sqlite   # SQLite engine — same suite, with DATA_SOURCE=sqlite
+npm run test:engines  # runs both of the above in sequence
 npm run test:coverage
 ```
 
-201 tests across 18 suites, run with `--runInBand` and `--experimental-vm-modules`.
+150 tests across 15 suites, run with `--runInBand` and `--experimental-vm-modules`.
+
+The route/controller/model tests are engine-agnostic: the same suite runs
+unchanged against every `DATA_SOURCE` supported by [`config/dataSource.js`](config/dataSource.js)
+(`json`, `sqlite`, `mysql`). `npm test` uses the default (`json`);
+`npm run test:sqlite` runs with `DATA_SOURCE=sqlite`; `npm run test:engines` runs
+the JSON suite then the SQLite suite and fails fast if either does.
+
+`DATA_SOURCE=sqlite` uses an in-memory database (`DB_SQLITE_PATH=:memory:`, set by
+`tests/setupEnv.js`) so no test file leaves a locked database file behind — Jest
+gives each test file its own module registry, so a file-backed database opened at
+app boot would otherwise be left locked for the next file.
 
 **Tests never touch `data/`.** `tests/setupEnv.js` sets `DATA_DIR` to
 `.test-data/` before the data layer loads, and each test clears that directory.

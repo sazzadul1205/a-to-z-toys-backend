@@ -35,6 +35,9 @@ class Cache {
       this.store.delete(key);
       this.timers.delete(key);
     }, ttl);
+    // Don't let an eviction timer keep the process alive (e.g. during tests
+    // or when the server is shutting down).
+    if (typeof timer.unref === "function") timer.unref();
 
     this.timers.set(key, timer);
   }

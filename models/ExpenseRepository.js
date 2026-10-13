@@ -53,7 +53,7 @@ async function deleteExpense(id) {
 }
 
 async function getExpensesByCategory(categoryId) {
-  return base.find({ categoryId });
+  return base.find((e) => String(e.categoryId) === String(categoryId));
 }
 
 async function getExpensesByDateRange(startDate, endDate) {

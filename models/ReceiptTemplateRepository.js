@@ -13,12 +13,14 @@ const DEFAULTS = {
 };
 
 async function getActiveByName(name) {
-  const templates = await base.find({ name, is_active: true });
+  const templates = await base.find(
+    (t) => t.name === name && t.is_active === true,
+  );
   return templates[0] || null;
 }
 
 async function getAllActive() {
-  return base.find({ is_active: true });
+  return base.find((t) => t.is_active === true);
 }
 
 async function createTemplate(data, userId) {
