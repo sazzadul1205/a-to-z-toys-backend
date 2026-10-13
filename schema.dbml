@@ -1,0 +1,244 @@
+// A to Z Kids World API — database diagram (dbdiagram.io / DBML)
+// The API is an Express (ESM) service whose "database" is a pluggable store
+// selected by DATA_SOURCE (json | sqlite | mysql). The collection name is the
+// table/file name; under json each collection is a `<name>.json` document
+// array, under sqlite/mysql a table. _id is always an ObjectId stringified to
+// varchar.
+//
+// Import this file at https://dbdiagram.io/d
+// Source: Mongoose schemas in models/*.js (see models/repositoryFactory.js REGISTRY)
+
+Enum user_role {
+  customer
+  admin
+}
+
+Enum order_payment_method {
+  cash
+  card
+  mobile
+  due
+}
+
+Enum order_status {
+  pending
+  completed
+  cancelled
+  refunded
+  due
+}
+
+Enum order_discount_type {
+  fixed
+  percentage
+}
+
+Enum stock_movement_type {
+  in
+  out
+  sale
+  restock
+  adjustment
+  return
+  damage
+  correction
+}
+
+Enum stock_reference_type {
+  order
+  purchase_order
+  pos
+  manual
+}
+
+Enum expense_payment_method {
+  cash
+  card
+  bank_transfer
+  mobile_banking
+  other
+}
+
+Enum expense_reference_type {
+  purchase_order
+  stock_adjustment
+  other
+  none
+}
+
+Enum purchase_order_status {
+  draft
+  ordered
+  partial
+  received
+  cancelled
+}
+
+Table users {
+  _id varchar [pk]
+  name varchar
+  email varchar [unique]
+  password varchar [note: 'bcrypt hash']
+  role user_role [default: 'Customer']
+  passwordChangedAt datetime [note: 'invalidates issued JWTs on change']
+  createdAt datetime
+}
+
+Table categories {
+  _id varchar [pk]
+  name varchar [unique]
+  description varchar
+  icon varchar [note: 'icon, emoji URL, or code']
+  createdAt datetime
+}
+
+Table products {
+  _id varchar [pk]
+  name varchar
+  description varchar
+  sku varchar [unique]
+  price decimal
+  buyPrice decimal
+  stock int [default: 0]
+  categoryId varchar [ref: > categories._id, note: 'many products -> one category']
+  image varchar
+  details json
+  isActive boolean [default: true, note: 'inactive = hidden from catalogue']
+  reviewsEnabled boolean [default: true]
+  createdAt datetime
+}
+
+Table reviews {
+  _id varchar [pk]
+  productId varchar [ref: > products._id, note: 'many reviews -> one product']
+  name varchar
+  rating int [note: '1..5']
+  comment varchar
+  createdAt datetime
+}
+
+Table orders {
+  _id varchar [pk]
+  saleNumber varchar [unique]
+  userId varchar [ref: > users._id, note: 'customer/cashier']
+  customerName varchar
+  customerPhone varchar
+  customerEmail varchar
+  customerAddress varchar
+  paymentMethod order_payment_method [default: 'cash']
+  subtotal decimal
+  discount decimal [default: 0]
+  discountType order_discount_type [default: 'fixed']
+  tax decimal [default: 0]
+  total decimal
+  amountPaid decimal [default: 0]
+  change decimal [default: 0]
+  balance decimal [default: 0, note: '0 unless paymentMethod = "due"']
+  status order_status [default: 'completed']
+  notes varchar
+  cashierId varchar [ref: > users._id, note: 'operator who served the order']
+  createdAt datetime
+  updatedAt datetime
+}
+
+Table order_items {
+  _id varchar [pk]
+  orderId varchar [ref: > orders._id, note: 'embedded in orders.items']
+  productId varchar [note: 'Product._id snapshot at order time']
+  productName varchar [note: 'snapshot']
+  sku varchar [note: 'snapshot']
+  quantity int
+  price decimal [note: 'snapshot']
+  total decimal [note: 'snapshot']
+}
+
+Table stock_movements {
+  _id varchar [pk]
+  productId varchar [ref: > products._id, note: 'movements -> product']
+  type stock_movement_type
+  quantity int
+  previousStock int
+  newStock int
+  reason varchar
+  referenceId varchar
+  referenceType stock_reference_type
+  userId varchar [ref: > users._id, note: 'staff member who acted']
+  createdAt datetime
+}
+
+Table purchase_orders {
+  _id varchar [pk]
+  orderNumber varchar [unique]
+  supplierName varchar
+  supplierContact varchar
+  status purchase_order_status [default: 'draft']
+  subtotal decimal
+  tax decimal [default: 0]
+  total decimal
+  notes varchar
+  orderedAt datetime
+  receivedAt datetime
+  createdBy varchar [ref: > users._id, note: 'staff member who created it']
+  createdAt datetime
+  updatedAt datetime
+}
+
+Table purchase_order_items {
+  _id varchar [pk]
+  purchaseOrderId varchar [ref: > purchase_orders._id, note: 'embedded in purchase_orders.items']
+  productId varchar [note: 'Product._id snapshot at order time']
+  productName varchar [note: 'snapshot']
+  sku varchar [note: 'snapshot']
+  quantity int
+  buyPrice decimal [note: 'snapshot']
+  totalCost decimal [note: 'snapshot']
+  receivedQuantity int [default: 0]
+}
+
+Table expense_categories {
+  _id varchar [pk]
+  name varchar [unique]
+  description varchar
+  icon varchar
+  color varchar [note: 'hex color for charts']
+  isActive boolean [default: true]
+  sortOrder int [default: 0]
+  createdAt datetime
+}
+
+Table expenses {
+  _id varchar [pk]
+  categoryId varchar [ref: > expense_categories._id, note: 'expenses -> category']
+  amount decimal
+  description varchar
+  date datetime
+  paymentMethod expense_payment_method [default: 'cash']
+  referenceId varchar
+  referenceType expense_reference_type [default: 'none']
+  vendor varchar
+  receiptNumber varchar
+  tags text [note: 'string array (stored as csv)']
+  createdBy varchar [ref: > users._id, note: 'staff member who recorded it']
+  createdAt datetime
+}
+
+Table receipt_templates {
+  _id varchar [pk, note: 'singleton key e.g. "pos-thermal", "a4-standard"']
+  name varchar [unique]
+  version int [default: 1]
+  header_html text
+  footer_html text
+  body_template text
+  css_styles text
+  is_active boolean [default: true]
+  updated_by varchar [note: 'last user to edit (-> users._id)']
+  created_at datetime
+  updated_at datetime
+}
+
+Table settings {
+  _id varchar [pk, note: 'singleton store key, e.g. "store"']
+  reviewsEnabled boolean [default: true]
+  inventoryManagementEnabled boolean [default: true]
+  orderProcessingEnabled boolean [default: true]
+}
