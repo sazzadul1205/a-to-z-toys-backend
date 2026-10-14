@@ -39,6 +39,40 @@ describe("Receipt template bootstrap", () => {
     ).toBeNull();
   });
 
+  it("upgrades already-seeded built-in templates while preserving custom header, footer, and styles", async () => {
+    await receiptTemplateRepository.createTemplate({
+      _id: "a4-standard",
+      name: "a4-standard",
+      version: 1,
+      header_html: "<div>Custom header</div>",
+      footer_html: "<div>Custom footer</div>",
+      body_template: "<p>{{oldReceiptField}}</p>",
+      css_styles: "body { color: navy; }",
+      is_active: true,
+    }, "test");
+
+    await expect(templateService.ensureDefaults()).resolves.toBeUndefined();
+
+    const upgraded = await receiptTemplateRepository.getActiveByName("a4-standard");
+    expect(upgraded.version).toBe(2);
+    expect(upgraded.body_template).not.toContain("oldReceiptField");
+    expect(upgraded.header_html).toBe("<div>Custom header</div>");
+    expect(upgraded.footer_html).toBe("<div>Custom footer</div>");
+    expect(upgraded.css_styles).toBe("body { color: navy; }");
+
+    const html = await templateService.getCompiledTemplate("a4-standard", {
+      saleNumber: "SN-3",
+      items: [{ name: "Toy", price: 12, quantity: 2 }],
+      subtotal: 24,
+      discount: 0,
+      tax: 0,
+      total: 24,
+      amountPaid: 24,
+    });
+    expect(html).toContain("৳24.00");
+    expect(html).not.toMatch(/\{\{[\s\S]*?\}\}/);
+  });
+
   it("renders the public receipt endpoint from seeded defaults", async () => {
     await templateService.ensureDefaults();
 
@@ -54,5 +88,55 @@ describe("Receipt template bootstrap", () => {
     expect(res.headers["content-type"]).toMatch(/html/);
     expect(res.text).toContain("A to Z Kids World");
     expect(res.text).toContain("SN-1");
+  });
+
+  it("renders nested receipt blocks, line totals, and fixed discounts without template expressions", async () => {
+    await templateService.ensureDefaults();
+
+    const html = await templateService.getCompiledTemplate("a4-standard", {
+      saleNumber: "SN-2",
+      cashier: "Cashier",
+      paymentMethod: "Cash",
+      items: [{ name: "Toy set", price: 24, quantity: 2 }],
+      discount: 5,
+      discountType: "fixed",
+      discountValue: 5,
+      total: 43,
+      amountPaid: 40,
+      balance: 3,
+    });
+
+    expect(html).toContain("Toy set");
+    expect(html).toContain("৳48.00");
+    expect(html).toContain("৳24.00");
+    expect(html).toContain("Amount Paid");
+    expect(html).toContain("Balance (Due)");
+    expect(html).not.toContain("(5%)");
+    expect(html).not.toMatch(/\{\{[\s\S]*?\}\}/);
+  });
+
+  it("normalizes the old fixed-discount label used by already-saved defaults", async () => {
+    const oldTemplate = {
+      name: "a4-standard",
+      header_html: "",
+      footer_html: "",
+      css_styles: "",
+      body_template: "<p>{{#if discountType}}{{#if discountValue}}({{discountValue}}%){{/if}}{{/if}}</p>",
+    };
+    const compiled = templateService.assembleHtml(oldTemplate);
+    const html = templateService.render(compiled, {
+      discountType: "fixed",
+      discountValue: 500,
+    });
+
+    expect(html).not.toContain("(500%)");
+    expect(html).not.toMatch(/\{\{[\s\S]*?\}\}/);
+
+    const legacyPercentageHtml = templateService.render("<p>{{discountLabel}}</p>", {
+      discountType: "percentage",
+      discount: 5,
+      subtotal: 50,
+    });
+    expect(legacyPercentageHtml).toContain("(10%)");
   });
 });

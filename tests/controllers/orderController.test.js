@@ -1,5 +1,6 @@
 import { cleanData, validCategory, validProduct, validUser } from "../helpers/testEnv.js";
 import { api, setupAdmin } from "../helpers/auth.js";
+import { userRepository } from "../../models/index.js";
 
 beforeEach(async () => {
   await cleanData();
@@ -75,6 +76,22 @@ describe("Order API", () => {
       expect(res.body.total).toBe(27);
     });
 
+    it("uses and saves the POS discount rate when the request also includes the calculated discount amount", async () => {
+      const { product, user } = await seedBasics(10, 10);
+      const res = await api().post("/orders").send({
+        userId: user._id,
+        items: [{ productId: product._id, quantity: 3 }],
+        discount: 3,
+        discountType: "percentage",
+        discountValue: 10,
+      });
+
+      expect(res.status).toBe(201);
+      expect(res.body.discount).toBe(3);
+      expect(res.body.discountValue).toBe(10);
+      expect(res.body.total).toBe(27);
+    });
+
     it("captures customer email and address", async () => {
       const { product, user } = await seedBasics(10, 5);
       const res = await api().post("/orders").send({
@@ -113,13 +130,40 @@ describe("Order API", () => {
       expect(res.body.balance).toBe(0);
     });
 
-    it("rejects unknown user", async () => {
-      const { product } = await seedBasics();
+    it("uses the authenticated admin as cashier", async () => {
+      const { product, user } = await seedBasics();
+      const admin = await userRepository.findOne((user) => user.email === "admin@test.local");
       const res = await api().post("/orders").send({
-        userId: "000000000000000000000000",
+        userId: user._id,
+        cashierId: "pos-user",
         items: [{ productId: product._id, quantity: 1 }],
       });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(201);
+      expect(String(res.body.userId)).toBe(String(user._id));
+      expect(String(res.body.cashierId)).toBe(String(admin._id));
+    });
+
+    it("includes sales totals and top products in the dashboard report", async () => {
+      const { product, user } = await seedBasics(10, 5);
+      const created = await api().post("/orders").send({
+        userId: user._id,
+        items: [{ productId: product._id, quantity: 3 }],
+      });
+      expect(created.status).toBe(201);
+
+      const report = await api().get("/reports/dashboard?days=30");
+      expect(report.status).toBe(200);
+      expect(report.body.totalRevenue).toBe(15);
+      expect(report.body.totalOrders).toBe(1);
+      expect(report.body.totalProducts).toBe(1);
+      expect(report.body.avgOrderValue).toBe(15);
+      expect(report.body.recentOrders).toHaveLength(1);
+      expect(report.body.topProducts[0]).toMatchObject({
+        productId: product._id,
+        name: product.name,
+        sold: 3,
+        revenue: 15,
+      });
     });
 
     it("rejects unknown product", async () => {

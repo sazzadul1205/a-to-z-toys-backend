@@ -836,11 +836,20 @@ async function ensureSettings() {
 
 async function seedTemplates() {
   const existing = await receiptTemplateRepository.getAllActive();
-  const names = new Set(existing.map((t) => t.name));
+  const existingByName = new Map(existing.map((template) => [template.name, template]));
   for (const def of DEFAULT_RECEIPT_TEMPLATES) {
-    if (!names.has(def.name)) {
+    const current = existingByName.get(def.name);
+    if (!current) {
       await receiptTemplateRepository.createTemplate(def, "system");
       console.log(`Created default template: ${def.name}`);
+    } else if ((Number(current.version) || 0) < def.version) {
+      await receiptTemplateRepository.updateById(current._id, {
+        ...current,
+        body_template: def.body_template,
+        version: def.version,
+        updated_at: new Date(),
+      });
+      console.log(`Updated default template: ${def.name} (v${def.version})`);
     }
   }
   console.log("Receipt templates ready");

@@ -30,6 +30,7 @@ const orderSchema = new mongoose.Schema({
     enum: ["fixed", "percentage"],
     default: "fixed",
   },
+  discountValue: { type: Number, default: 0, min: 0 },
   tax: { type: Number, default: 0, min: 0 },
   total: { type: Number, required: true, min: 0 },
   amountPaid: { type: Number, default: 0, min: 0 },

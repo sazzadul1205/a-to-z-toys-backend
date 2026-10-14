@@ -1,5 +1,6 @@
 import { stockMovementRepository } from "../models/index.js";
 import { productRepository } from "../models/index.js";
+import { orderRepository } from "../models/index.js";
 import { expenseRepository, expenseCategoryRepository } from "../models/index.js";
 
 // ===== PRODUCT IN/OUT ANALYTICS (Stock Movements) =====
@@ -226,7 +227,12 @@ export async function getStockMovementDetails(req, res) {
 export async function getDashboardAnalytics(req, res) {
   try {
     const { startDate, endDate } = req.query;
-    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const days = Number(req.query.days);
+    const start = startDate
+      ? new Date(startDate)
+      : Number.isInteger(days) && days > 0
+        ? new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000)
+        : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const end = endDate ? new Date(endDate) : new Date();
     end.setHours(23, 59, 59, 999);
 
@@ -256,6 +262,39 @@ export async function getDashboardAnalytics(req, res) {
     const products = await productRepository.findAll();
     const productMap = new Map(products.map((p) => [String(p._id), { name: p.name, sku: p.sku, price: p.price, stock: p.stock }]));
 
+    const sales = (await orderRepository.findAll())
+      .filter((order) => {
+        const createdAt = new Date(order.createdAt);
+        return createdAt >= start && createdAt <= end &&
+          order.status !== "Cancelled" && order.status !== "Refunded";
+      })
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const totalRevenue = sales.reduce(
+      (sum, order) => sum + Number(order.total ?? order.totalPrice ?? 0),
+      0,
+    );
+
+    const soldByProduct = new Map();
+    for (const order of sales) {
+      for (const item of order.items || []) {
+        const productId = String(item.productId);
+        const sold = Number(item.quantity) || 0;
+        const itemRevenue = Number(item.total ?? (Number(item.price) || 0) * sold);
+        const current = soldByProduct.get(productId) || {
+          productId,
+          name: item.productName || productMap.get(productId)?.name || "Unknown",
+          sold: 0,
+          revenue: 0,
+        };
+        current.sold += sold;
+        current.revenue += itemRevenue;
+        soldByProduct.set(productId, current);
+      }
+    }
+    const topProducts = [...soldByProduct.values()]
+      .sort((a, b) => b.sold - a.sold)
+      .slice(0, 10);
+
     const topSelling = Object.entries(productOut)
       .map(([productId, qty]) => ({
         productId,
@@ -281,6 +320,16 @@ export async function getDashboardAnalytics(req, res) {
       .slice(0, 10);
 
     res.json({
+      totalRevenue,
+      totalOrders: sales.length,
+      totalProducts: products.length,
+      avgOrderValue: sales.length ? totalRevenue / sales.length : 0,
+      recentOrders: sales.slice(0, 10).map((order) => ({
+        _id: order._id,
+        createdAt: order.createdAt,
+        total: Number(order.total ?? order.totalPrice ?? 0),
+      })),
+      topProducts,
       productMovement: {
         totalIn,
         totalOut,

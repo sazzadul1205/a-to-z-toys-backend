@@ -23,17 +23,17 @@ const DEFAULT_THERMAL_BODY = `
     {{/if}}
     <p><span class="bold">Payment:</span> {{paymentMethod}}</p>
     {{#if discount}}
-    <p class="discount"><span class="bold">Discount:</span> -{{formatBDT discount}} {{#if discountType}}{{#if discountValue}}({{discountValue}}%){{/if}}{{/if}}</p>
+    <p class="discount"><span class="bold">Discount:</span> -{{formatBDT discount}} {{discountLabel}}</p>
     {{/if}}
     {{#if balance}}
     <p class="balance"><span class="bold">Balance:</span> {{formatBDT balance}}</p>
     {{/if}}
   </div>
 
-  <div class="line" />
+  <div class="line"></div>
 
   <div class="items">
-    <div class="flex justify-between text-[11px] bold mb-1">
+    <div class="item-row bold">
       <span class="item-name">Item</span>
       <span class="item-qty-price">Qty × Price</span>
     </div>
@@ -45,7 +45,7 @@ const DEFAULT_THERMAL_BODY = `
     {{/each}}
   </div>
 
-  <div class="line" />
+  <div class="line"></div>
 
   <div class="totals">
     <div class="row text-[12px]">
@@ -54,7 +54,7 @@ const DEFAULT_THERMAL_BODY = `
     </div>
     {{#if discount}}
     <div class="row text-[12px] text-red-600">
-      <span>Discount {{#if discountType}}{{#if discountValue}}({{discountValue}}%){{/if}}{{/if}}</span>
+      <span>Discount {{discountLabel}}</span>
       <span class="bold">-{{formatBDT discount}}</span>
     </div>
     {{/if}}
@@ -151,7 +151,7 @@ const DEFAULT_A4_BODY = `
     </div>
     {{#if discount}}
     <div class="row text-red-600">
-      <span>Discount {{#if discountType}}{{#if discountValue}}({{discountValue}}%){{/if}}{{/if}}</span>
+      <span>Discount {{discountLabel}}</span>
       <span>-{{formatBDT discount}}</span>
     </div>
     {{/if}}
@@ -192,29 +192,35 @@ const DEFAULT_A4_BODY = `
 const DEFAULT_THERMAL_CSS = `
 @media print {
   @page { margin: 0; size: 80mm auto; }
-  body { margin: 0; padding: 0; }
+  body { width: 80mm; margin: 0; padding: 0; }
   .no-print { display: none !important; }
 }
-body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; width: 320px; margin: 0 auto; padding: 16px; }
+* { box-sizing: border-box; }
+body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; width: 80mm; margin: 0 auto; padding: 4mm; color: #111; }
 .center { text-align: center; }
 .bold { font-weight: bold; }
-.line { border-top: 1px dashed #000; margin: 8px 0; }
+.line { height: 0; border-top: 1px dashed #000; margin: 8px 0; }
 .row { display: flex; justify-content: space-between; margin: 4px 0; }
+.sale-info p { margin: 3px 0; overflow-wrap: anywhere; }
 .items { font-size: 11px; }
-.item-row { display: flex; justify-content: space-between; margin: 2px 0; }
-.item-name { width: 65%; word-break: break-word; }
-.item-qty-price { width: 35%; text-align: right; }
+.item-row { display: flex; justify-content: space-between; gap: 6px; margin: 3px 0; }
+.item-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.item-qty-price { flex: 0 0 42%; text-align: right; overflow-wrap: anywhere; }
+.totals { margin-top: 8px; }
+.receipt-footer { margin-top: 12px; text-align: center; color: #555; }
+p { margin: 3px 0; }
 .discount { color: #dc2626; }
 .balance { color: #f97316; }
 `;
 
 const DEFAULT_A4_CSS = `
 @media print {
-  @page { margin: 20mm; size: A4; }
-  body { margin: 0; padding: 0; }
+  @page { margin: 15mm; size: A4; }
+  body { width: auto; max-width: none; margin: 0; padding: 0; }
   .no-print { display: none !important; }
 }
-body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: #1a1a1a; max-width: 210mm; margin: 0 auto; padding: 20mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: #1a1a1a; width: 100%; max-width: 210mm; margin: 0 auto; padding: 16mm; }
 .header { text-align: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 20px; margin-bottom: 24px; }
 .company-name { font-size: 28px; font-weight: 800; color: #1a1a1a; margin-bottom: 8px; }
 .company-info { font-size: 13px; color: #666; line-height: 1.6; }
@@ -234,6 +240,8 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-hei
 .footer .thank-you { font-weight: 700; font-size: 16px; color: #1a1a1a; margin-bottom: 8px; }
 .policy { font-size: 11px; color: #999; margin-top: 16px; }
 `;
+
+const DEFAULT_TEMPLATE_VERSION = 2;
 
 const DEFAULT_THERMAL_HEADER = `
 <div class="receipt-header center">
@@ -291,50 +299,139 @@ function sanitizeHtml(html) {
     .replace(/javascript:/gi, "");
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function interpolate(template, data) {
-  // Simple Handlebars-like interpolation
-  let result = template;
+  const tokens = template.split(/(\{\{[\s\S]*?\}\})/g).filter(Boolean);
 
-  // Handle conditionals first
-  result = result.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (match, key, content) => {
-    const value = data[key];
-    return (value !== undefined && value !== null && value !== false && value !== "") ? content : "";
-  });
+  function parseNodes(startIndex, closingBlock = null) {
+    const nodes = [];
+    let index = startIndex;
 
-  // Handle each loops
-  result = result.replace(/\{\{#each\s+(\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g, (match, key, content) => {
-    const arr = data[key];
-    if (!Array.isArray(arr) || arr.length === 0) return "";
-    return arr.map(item => {
-      let itemContent = content;
-      // Replace item properties
-      Object.keys(item).forEach(prop => {
-        itemContent = itemContent.replace(new RegExp(`\\{\\{${prop}\\}\\}`, 'g'), item[prop]);
-      });
-      // Replace nested helpers
-      itemContent = itemContent.replace(/\{\{formatBDT\s+(\w+)\}\}/g, (m, prop) => formatBDT(item[prop]));
-      itemContent = itemContent.replace(/\{\{multiply\s+(\w+)\s+(\w+)\}\}/g, (m, p1, p2) => formatBDT((item[p1] || 0) * (item[p2] || 0)));
-      return itemContent;
-    }).join("");
-  });
+    while (index < tokens.length) {
+      const token = tokens[index];
+      const match = token.match(/^\{\{\s*([\s\S]*?)\s*\}\}$/);
+      if (!match) {
+        nodes.push({ type: "text", value: token });
+        index += 1;
+        continue;
+      }
 
-  // Handle helpers
-  result = result.replace(/\{\{formatBDT\s+(\w+)\}\}/g, (match, key) => formatBDT(data[key]));
-  result = result.replace(/\{\{multiply\s+(\w+)\s+(\w+)\}\}/g, (match, k1, k2) => formatBDT((data[k1] || 0) * (data[k2] || 0)));
+      const expression = match[1].trim();
+      if (expression === "else" || expression.startsWith("/")) {
+        return { nodes, index, stop: expression };
+      }
 
-  // Handle computed values
-  if (data.amountPaid !== undefined && data.total !== undefined) {
-    result = result.replace(/\{\{amountPaidNotEqualTotal\}\}/g, data.amountPaid !== data.total);
+      const block = expression.match(/^#(if|each)\s+([\w.]+)$/);
+      if (block) {
+        const [, type, key] = block;
+        const primary = parseNodes(index + 1, type);
+        let alternate = [];
+        index = primary.index;
+        if (primary.stop === "else") {
+          const secondary = parseNodes(index + 1, type);
+          alternate = secondary.nodes;
+          index = secondary.index;
+        }
+        if (tokens[index]?.trim() !== `{{/${type}}}`) {
+          throw new Error(`Unclosed ${type} block in receipt template`);
+        }
+        nodes.push({ type, key, primary: primary.nodes, alternate });
+        index += 1;
+        continue;
+      }
+
+      nodes.push({ type: "value", expression });
+      index += 1;
+    }
+
+    if (closingBlock) {
+      throw new Error(`Unclosed ${closingBlock} block in receipt template`);
+    }
+    return { nodes, index, stop: null };
   }
 
-  // Simple variable replacement
-  Object.keys(data).forEach(key => {
-    if (typeof data[key] !== "object" && data[key] !== undefined) {
-      result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), data[key]);
-    }
-  });
+  const nodes = parseNodes(0).nodes;
 
-  return result;
+  function resolve(key, context) {
+    return key.split(".").reduce((value, part) => value?.[part], context);
+  }
+
+  function expressionValue(expression, context) {
+    const moneyTimes = expression.match(/^formatBDT\s+\(multiply\s+([\w.]+)\s+([\w.]+)\)$/);
+    if (moneyTimes) {
+      const [, left, right] = moneyTimes;
+      return formatBDT((Number(resolve(left, context)) || 0) * (Number(resolve(right, context)) || 0));
+    }
+
+    const money = expression.match(/^formatBDT\s+([\w.]+)$/);
+    if (money) return formatBDT(resolve(money[1], context));
+
+    const multiply = expression.match(/^multiply\s+([\w.]+)\s+([\w.]+)$/);
+    if (multiply) {
+      const [, left, right] = multiply;
+      return (Number(resolve(left, context)) || 0) * (Number(resolve(right, context)) || 0);
+    }
+
+    return resolve(expression, context);
+  }
+
+  function render(items, context) {
+    return items.map((node) => {
+      if (node.type === "text") return node.value;
+      if (node.type === "if") {
+        const value = resolve(node.key, context);
+        const branch = value !== undefined && value !== null && value !== false && value !== "" && value !== 0
+          ? node.primary
+          : node.alternate;
+        return render(branch, context);
+      }
+      if (node.type === "each") {
+        const collection = resolve(node.key, context);
+        if (!Array.isArray(collection)) return "";
+        return collection.map((item) => render(node.primary, { ...context, ...item })).join("");
+      }
+
+      const value = expressionValue(node.expression, context);
+      return value === undefined || value === null ? "" : escapeHtml(value);
+    }).join("");
+  }
+
+  return render(nodes, data);
+}
+
+function receiptLayoutFixes(templateName) {
+  if (templateName === "pos-thermal") {
+    return `
+* { box-sizing: border-box; }
+body { width: 80mm !important; max-width: 80mm !important; margin: 0 auto !important; padding: 4mm !important; }
+.receipt-header, .receipt-body, .receipt-footer { width: 100%; max-width: 100%; overflow-wrap: anywhere; }
+.items { width: 100%; }
+.item-row { display: flex; align-items: flex-start; gap: 4px; }
+.item-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.item-qty-price { flex: 0 0 44%; width: auto; text-align: right; white-space: normal; overflow-wrap: anywhere; }
+.totals .row span:last-child { margin-left: 8px; text-align: right; }
+`;
+  }
+
+  if (templateName === "a4-standard") {
+    return `
+* { box-sizing: border-box; }
+body { width: 100% !important; max-width: 210mm !important; margin: 0 auto !important; }
+.items-table { width: 100%; table-layout: fixed; }
+.items-table th, .items-table td { overflow-wrap: anywhere; word-break: normal; }
+.totals { width: min(100%, 300px); }
+`;
+  }
+
+  return "";
 }
 
 function formatBDT(value) {
@@ -360,8 +457,16 @@ export class TemplateService {
       return {
         ...getDefaults(templateName),
         name: templateName,
-        version: 0,
+        version: DEFAULT_TEMPLATE_VERSION,
         _id: `default-${templateName}`,
+      };
+    }
+
+    if (templateName === "pos-thermal" || templateName === "a4-standard") {
+      return {
+        ...template,
+        body_template: getDefaults(templateName).body_template,
+        version: Math.max(Number(template.version) || 0, DEFAULT_TEMPLATE_VERSION),
       };
     }
     return template;
@@ -381,21 +486,27 @@ export class TemplateService {
   }
 
   assembleHtml(template) {
+    const styles = `${template.css_styles || ""}\n${receiptLayoutFixes(template.name)}`;
+    const bodyTemplate = String(template.body_template || "").replace(
+      /\{\{#if discountType\}\}\{\{#if discountValue\}\}\(\{\{discountValue\}\}%\)\{\{\/if\}\}\{\{\/if\}\}/g,
+      "{{discountLabel}}",
+    );
     return `
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="utf-8">
   <title>Receipt</title>
-  <style>${template.css_styles}</style>
+  <style>${styles}</style>
 </head>
 <body>
   <header class="receipt-header">${template.header_html}</header>
-  <main class="receipt-body">${template.body_template}</main>
+  <main class="receipt-body">${bodyTemplate}</main>
   <footer class="receipt-footer">${template.footer_html}</footer>
 </body>
 </html>
-    `.trim();
+    `.trim().replace(/<div([^>]*)\/>/gi, "<div$1></div>");
   }
 
   render(html, data) {
@@ -425,6 +536,22 @@ export class TemplateService {
     // Compute derived values
     if (data.items && Array.isArray(data.items)) {
       computedData.subtotal = data.items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
+    } else {
+      computedData.subtotal = Number(data.subtotal) || 0;
+    }
+    const storedPercentage = Number(data.discountValue) || 0;
+    const percentageValue =
+      data.discountType === "percentage" && storedPercentage > 0
+        ? storedPercentage
+        : data.discountType === "percentage" && computedData.subtotal > 0
+          ? (Number(data.discount) / computedData.subtotal) * 100
+          : 0;
+    computedData.discountLabel =
+      data.discountType === "percentage" && percentageValue
+        ? `(${Number(percentageValue.toFixed(2))}%)`
+        : "";
+    if (data.amountPaid !== undefined && data.total !== undefined) {
+      computedData.amountPaidNotEqualTotal = Number(data.amountPaid) !== Number(data.total);
     }
 
     return interpolate(html, computedData);
@@ -473,26 +600,37 @@ export class TemplateService {
   // Initialize default templates if they don't exist
   async ensureDefaults() {
     const existing = await receiptTemplateRepository.getAllActive();
-    const names = new Set(existing.map(t => t.name));
+    const existingByName = new Map(existing.map((template) => [template.name, template]));
 
     const defaults = [
       {
         _id: "pos-thermal",
         name: "pos-thermal",
+        version: DEFAULT_TEMPLATE_VERSION,
         ...getDefaults("pos-thermal"),
         is_active: true,
       },
       {
         _id: "a4-standard",
         name: "a4-standard",
+        version: DEFAULT_TEMPLATE_VERSION,
         ...getDefaults("a4-standard"),
         is_active: true,
       },
     ];
 
     for (const def of defaults) {
-      if (!names.has(def.name)) {
+      const current = existingByName.get(def.name);
+      if (!current) {
         await receiptTemplateRepository.createTemplate(def, "system");
+      } else if ((Number(current.version) || 0) < DEFAULT_TEMPLATE_VERSION) {
+        await receiptTemplateRepository.updateById(current._id, {
+          ...current,
+          body_template: def.body_template,
+          version: DEFAULT_TEMPLATE_VERSION,
+          updated_at: new Date(),
+        });
+        this.cache.invalidate(`template:${def.name}:*`);
       }
     }
   }

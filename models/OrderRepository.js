@@ -86,7 +86,7 @@ async function createOrder(data) {
     });
   }
 
-  const discountValue = Number(discount) || 0;
+  const discountValue = Number(data.discountValue ?? discount) || 0;
   const taxAmount = Number(tax) || 0;
   const discountAmount =
     discountType === "percentage"
@@ -119,6 +119,7 @@ async function createOrder(data) {
     items: validatedItems,
     paymentMethod: paymentMethod || "cash",
     discountType: discountType || "fixed",
+    discountValue,
     subtotal,
     discount: discountAmount,
     tax: taxAmount,

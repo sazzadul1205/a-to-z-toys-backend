@@ -5,7 +5,7 @@ export const DEFAULT_RECEIPT_TEMPLATES = [
   {
     _id: "pos-thermal",
     name: "pos-thermal",
-    version: 1,
+    version: 2,
     header_html: `<div class="receipt-header center">
   <p class="bold text-[14px]">{{companyName}}</p>
   <p class="text-[11px] text-gray-600">{{companyAddress}}</p>
@@ -38,17 +38,17 @@ export const DEFAULT_RECEIPT_TEMPLATES = [
     {{/if}}
     <p><span class="bold">Payment:</span> {{paymentMethod}}</p>
     {{#if discount}}
-    <p class="discount"><span class="bold">Discount:</span> -{{formatBDT discount}} {{#if discountType}}{{#if discountValue}}({{discountValue}}%){{/if}}{{/if}}</p>
+    <p class="discount"><span class="bold">Discount:</span> -{{formatBDT discount}} {{discountLabel}}</p>
     {{/if}}
     {{#if balance}}
     <p class="balance"><span class="bold">Balance:</span> {{formatBDT balance}}</p>
     {{/if}}
   </div>
 
-  <div class="line" />
+  <div class="line"></div>
 
   <div class="items">
-    <div class="flex justify-between text-[11px] bold mb-1">
+    <div class="item-row bold">
       <span class="item-name">Item</span>
       <span class="item-qty-price">Qty × Price</span>
     </div>
@@ -60,7 +60,7 @@ export const DEFAULT_RECEIPT_TEMPLATES = [
     {{/each}}
   </div>
 
-  <div class="line" />
+  <div class="line"></div>
 
   <div class="totals">
     <div class="row text-[12px]">
@@ -69,7 +69,7 @@ export const DEFAULT_RECEIPT_TEMPLATES = [
     </div>
     {{#if discount}}
     <div class="row text-[12px] text-red-600">
-      <span>Discount {{#if discountType}}{{#if discountValue}}({{discountValue}}%){{/if}}{{/if}}</span>
+      <span>Discount {{discountLabel}}</span>
       <span class="bold">-{{formatBDT discount}}</span>
     </div>
     {{/if}}
@@ -116,15 +116,18 @@ export const DEFAULT_RECEIPT_TEMPLATES = [
   body { margin: 0; padding: 0; }
   .no-print { display: none !important; }
 }
-body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; width: 320px; margin: 0 auto; padding: 16px; }
+* { box-sizing: border-box; }
+body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; width: 80mm; margin: 0 auto; padding: 4mm; }
 .center { text-align: center; }
 .bold { font-weight: bold; }
 .line { border-top: 1px dashed #000; margin: 8px 0; }
 .row { display: flex; justify-content: space-between; margin: 4px 0; }
 .items { font-size: 11px; }
-.item-row { display: flex; justify-content: space-between; margin: 2px 0; }
-.item-name { width: 65%; word-break: break-word; }
-.item-qty-price { width: 35%; text-align: right; }
+.sale-info p { margin: 3px 0; overflow-wrap: anywhere; }
+.item-row { display: flex; justify-content: space-between; gap: 4px; margin: 3px 0; }
+.item-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.item-qty-price { flex: 0 0 44%; text-align: right; overflow-wrap: anywhere; }
+.totals .row span:last-child { margin-left: 8px; text-align: right; }
 .discount { color: #dc2626; }
 .balance { color: #f97316; }`,
     is_active: true,
@@ -132,7 +135,7 @@ body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;
   {
     _id: "a4-standard",
     name: "a4-standard",
-    version: 1,
+    version: 2,
     header_html: `<div class="receipt-header header">
   <div class="company-name">{{companyName}}</div>
   <div class="company-info">
@@ -197,7 +200,7 @@ body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;
     </div>
     {{#if discount}}
     <div class="row text-red-600">
-      <span>Discount {{#if discountType}}{{#if discountValue}}({{discountValue}}%){{/if}}{{/if}}</span>
+      <span>Discount {{discountLabel}}</span>
       <span>-{{formatBDT discount}}</span>
     </div>
     {{/if}}
@@ -238,7 +241,8 @@ body { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;
   body { margin: 0; padding: 0; }
   .no-print { display: none !important; }
 }
-body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: #1a1a1a; max-width: 210mm; margin: 0 auto; padding: 20mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: #1a1a1a; width: 100%; max-width: 210mm; margin: 0 auto; padding: 16mm; }
 .header { text-align: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 20px; margin-bottom: 24px; }
 .company-name { font-size: 28px; font-weight: 800; color: #1a1a1a; margin-bottom: 8px; }
 .company-info { font-size: 13px; color: #666; line-height: 1.6; }
@@ -251,6 +255,8 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-hei
 .items-table tr:last-child td { border-bottom: 2px solid #1a1a1a; }
 .items-table .text-right { text-align: right; }
 .items-table .text-center { text-align: center; }
+.items-table { table-layout: fixed; }
+.items-table th, .items-table td { overflow-wrap: anywhere; }
 .totals { width: 300px; margin-left: auto; font-size: 13px; }
 .totals .row { display: flex; justify-content: space-between; padding: 6px 0; }
 .totals .row.total { font-size: 16px; font-weight: 800; border-top: 2px solid #1a1a1a; padding-top: 12px; margin-top: 8px; }

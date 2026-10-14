@@ -1,5 +1,40 @@
 import { orderRepository } from "../models/index.js";
 
+// Public endpoint: the storefront shows a "Recent POS Orders" section so
+// visitors can see the shop is active. Only completed sales are exposed,
+// and only the fields a customer would reasonably see.
+export async function getRecentPublic(req, res) {
+  try {
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    const orders = await orderRepository.findAll();
+
+    const publicOrders = orders
+      .filter((o) => o.status === "Completed")
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, limit)
+      .map((o) => ({
+        _id: o._id,
+        saleNumber: o.saleNumber,
+        customerName: o.customerName || "",
+        items: (o.items || []).map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        subtotal: o.subtotal || 0,
+        discount: o.discount || 0,
+        tax: o.tax || 0,
+        total: o.total || 0,
+        paymentMethod: o.paymentMethod,
+        createdAt: o.createdAt,
+      }));
+
+    res.json({ orders: publicOrders });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 export async function listOrders(req, res) {
   try {
     const { userId, status, page = 1, limit = 20, sort = "createdAt", order = "desc" } = req.query;
@@ -51,7 +86,10 @@ export async function getOrder(req, res) {
 
 export async function createOrder(req, res) {
   try {
-    const order = await orderRepository.createOrder(req.body);
+    const order = await orderRepository.createOrder({
+      ...req.body,
+      cashierId: req.user._id,
+    });
     res.status(201).json(order);
   } catch (err) {
     const status = err.status || 500;
