@@ -42,9 +42,13 @@ taking precedence). See `README.md` for the full table. Key entries:
 `PORT` (3000), `CORS_ORIGIN` (\*), `JWT_SECRET`, `JWT_EXPIRES_IN` (1d),
 `DATA_SOURCE` (`json`|`sqlite`|`mysql`, default `json`) selects the engine;
 `DB_SQLITE_PATH`; `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` (MySQL only);
-`DB_SYNC`. Data lives in `DATA_DIR` (default `./data`; tests use `.test-data/`). Feature flags: `ORDER_PROCESSING`,
-`INVENTORY_MANAGEMENT`. Rate-limit knobs: `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`,
-`REVIEW_SUBMIT_LIMIT`, `REVIEW_SUBMIT_WINDOW_MS`.
+`DB_SYNC`. Data lives in `DATA_DIR` (default `./data`; tests use `.test-data/`).
+Feature flags (`ORDER_PROCESSING`, `INVENTORY_MANAGEMENT`) are **not** env-driven —
+they live on the store-wide settings document and are toggled via
+`PATCH /settings/inventory` and `PATCH /settings/order-processing` (admin-only);
+`server.js` calls `loadFeatureSettings()` at boot to cache them. Rate-limit knobs:
+`RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`, `REVIEW_SUBMIT_LIMIT`,
+`REVIEW_SUBMIT_WINDOW_MS`.
 
 ## Logging
 

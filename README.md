@@ -88,12 +88,18 @@ copy it to a local (git-ignored) `.env` and `dotenv` loads it at startup, with
 | `RATE_LIMIT_MAX`                                              | `100`                | Requests per window per IP across the general API                                                                                                                                       |
 | `RATE_LIMIT_WINDOW_MS`                                        | `900000`             | Length of the general API window                                                                                                                                                        |
 | `DATA_DIR`                                                    | `./data`             | Store location. The Jest suite points this at `.test-data/`.                                                                                                                            |
-| `ORDER_PROCESSING`                                            | enabled              | `false` returns `403` on all order writes                                                                                                                                               |
-| `INVENTORY_MANAGEMENT`                                        | enabled              | `false` stops tracking stock                                                                                                                                                            |
 | `DATA_SOURCE`                                                 | `json`               | Storage engine: `json` (files in `DATA_DIR`), `sqlite`, or `mysql`.                                                                                                                     |
 | `DB_SQLITE_PATH`                                              | `DATA_DIR/sqlite.db` | SQLite database file (only for `DATA_SOURCE=sqlite`).                                                                                                                                   |
-| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | defaults             | MySQL/MariaDB connection (only for `DATA_SOURCE=mysql`).                                                                                                                                |
+| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | defaults             | MySQL/MariaDB connection (only for `DATA_SOURCE=mysql`).                                                                                                                               |
 | `DB_SYNC`                                                     | `true`               | `false` skips auto-creating tables on boot.                                                                                                                                             |
+
+### Feature flags (not env-driven)
+
+`orderProcessingEnabled` and `inventoryManagementEnabled` live on the single
+store-wide settings document (`GET /settings` reads them; `PATCH /settings/inventory`
+and `PATCH /settings/order-processing` toggle them — both admin-only). `server.js`
+calls `loadFeatureSettings()` at boot to cache them, so the admin UI is the single
+source of truth. There is no `ORDER_PROCESSING` / `INVENTORY_MANAGEMENT` env var.
 
 ## Storage backends
 

@@ -1,4 +1,5 @@
 import { settingsRepository } from "../models/index.js";
+import { refreshFeatureSettings } from "../config/features.js";
 
 // The review configuration is store-wide, not per product, so it
 // lives on a single settings document.
@@ -31,6 +32,8 @@ export async function updateInventorySettings(req, res) {
     const updated = await settingsRepository.updateSettings({
       inventoryManagementEnabled: value,
     });
+    // Push the toggle to the running process so it takes effect immediately.
+    await refreshFeatureSettings(settingsRepository);
     res.json({
       success: true,
       inventoryManagementEnabled: updated.inventoryManagementEnabled !== false,
@@ -49,6 +52,8 @@ export async function updateOrderProcessingSettings(req, res) {
     const updated = await settingsRepository.updateSettings({
       orderProcessingEnabled: value,
     });
+    // Push the toggle to the running process so it takes effect immediately.
+    await refreshFeatureSettings(settingsRepository);
     res.json({
       success: true,
       orderProcessingEnabled: updated.orderProcessingEnabled !== false,
