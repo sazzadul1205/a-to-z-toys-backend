@@ -4,7 +4,6 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { apiLimiter } from "./config/rateLimits.js";
-import { logger } from "./config/logger.js";
 import { requestLogger, errorLogger } from "./middleware/logging.js";
 import authRoutes from "./routes/authRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
@@ -24,25 +23,12 @@ import backupRoutes from "./routes/backupRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
 import templateRoutes from "./routes/templateRoutes.js";
 import { DATA_SOURCE } from "./config/dataSource.js";
-import { ensureSchema } from "./models/repositoryFactory.js";
-import { templateService } from "./services/templateService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.join(__dirname, "uploads", "processed");
 
 const app = express();
-
-// Initialize schema and default templates
-if (DATA_SOURCE !== "json") {
-  ensureSchema().then(() => {
-    templateService.ensureDefaults().catch(err => {
-      logger.error("Failed to initialize default templates", { error: err.message });
-    });
-  }).catch(err => {
-    logger.error("Failed to ensure schema", { error: err.message });
-  });
-}
 
 // Behind a reverse proxy? Set TRUST_PROXY to the number of proxy hops so that
 // req.ip (and therefore rate limiting) reflects the real client. Do not use

@@ -1,19 +1,55 @@
-import "dotenv/config";
-import app from "./app.js";
-import { ensureSchema, dataSource } from "./models/repositoryFactory.js";
-import { productRepository } from "./models/index.js";
-import { settingsRepository } from "./models/index.js";
-import { loadFeatureSettings } from "./config/features.js";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const PORT = process.env.PORT;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-await ensureSchema();
-// Backfill the isActive/reviewsEnabled flags on rows created before they
-// existed, so the admin UI and the public catalogue agree on defaults.
-await productRepository.backfillFlags();
-// Load feature settings from database for dynamic toggles
-await loadFeatureSettings(settingsRepository);
+// Load .env from the app's own directory, not process.cwd().
+// Under cPanel/Passenger cwd is often "/" so the default lookup fails.
+dotenv.config({ path: path.join(__dirname, ".env") });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT} (engine: ${dataSource})`);
+// Dynamic imports AFTER dotenv so config modules that read process.env at
+// module load time (dataSource.js, features.js, etc.) see real values.
+const { default: app } = await import("./app.js");
+const { ensureSchema, dataSource } = await import("./models/repositoryFactory.js");
+const { productRepository, settingsRepository } = await import("./models/index.js");
+const { loadFeatureSettings } = await import("./config/features.js");
+const { templateService } = await import("./services/templateService.js");
+
+// Fallback prevents "options.port should be >= 0 and < 65536" crash.
+// On cPanel/Passenger, PORT is injected by the host — do NOT set it in .env.
+const PORT = process.env.PORT || 3000;
+
+try {
+  await ensureSchema();
+  await productRepository.backfillFlags();
+  await loadFeatureSettings(settingsRepository);
+  await templateService.ensureDefaults();
+} catch (err) {
+  console.error("[startup] init failed:", err);
+  // Re-throw so Passenger logs it and the app fails loudly instead of
+  // half-starting and returning 503 with no explanation.
+  throw err;
+}
+
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT} (engine: ${dataSource})`);
+  console.log(`NODE_ENV=${process.env.NODE_ENV || "development"}`);
+  console.log(`CORS_ORIGIN=${process.env.CORS_ORIGIN || "(default)"}`);
+});
+
+// Graceful shutdown so Passenger can stop us cleanly.
+for (const sig of ["SIGINT", "SIGTERM"]) {
+  process.on(sig, () => {
+    console.log(`${sig} received, closing server...`);
+    server.close(() => process.exit(0));
+  });
+}
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
+  process.exit(1);
 });
